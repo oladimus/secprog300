@@ -15,6 +15,7 @@ const RouteProtected: React.FC = () => {
         auth().catch(() => {
             setIsAuthorized(false)
             setIsLoading(false)
+            console.log("Hello")
         })
     }, [])
 
@@ -51,6 +52,8 @@ const RouteProtected: React.FC = () => {
         const token = localStorage.getItem(ACCESS_TOKEN)
         if (!token) {
             setIsAuthorized(false)
+            setIsLoading(false)
+            console.log("!token")
             return
         }
 
@@ -59,6 +62,7 @@ const RouteProtected: React.FC = () => {
         const now = Date.now() / 1000
 
         if (tokenExpiration && tokenExpiration < now) {
+            console.log("22222")
             await refreshToken()
         } else {
             setIsAuthorized(true)
