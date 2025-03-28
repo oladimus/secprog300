@@ -17,7 +17,13 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-from api.views import CreateUserView, CustomTokenObtainPairView, CustomTokenRefreshView, checkAuthenticationView, logout_view
+from api.views import (
+    CreateUserView,
+    CustomTokenObtainPairView,
+    CustomTokenRefreshView,
+    checkAuthenticationView,
+    logout_view,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
