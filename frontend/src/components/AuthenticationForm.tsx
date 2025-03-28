@@ -28,9 +28,6 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                 credentials: 'include',
             })
             if (response.ok && !isRegister) {
-                const data = await response.json()
-                localStorage.setItem(ACCESS_TOKEN, data.access)
-                localStorage.setItem(REFRESH_TOKEN, data.refresh)
                 navigate("/")
             } else {
                 navigate("/login")

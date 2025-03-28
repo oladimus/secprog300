@@ -5,39 +5,27 @@ import { ACCESS_TOKEN, REFRESH_TOKEN } from '../constants'
 import { useEffect, useState } from 'react'
 import Home from '../pages/Home'
 
-const BASE_URL = `http://localhost:8000/api/token/`
+const BASE_URL = `http://localhost:8000/api/`
 
 const RouteProtected: React.FC = () => {
     const [isAuthorized, setIsAuthorized] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
-        auth().catch(() => {
-            setIsAuthorized(false)
-            setIsLoading(false)
-            console.log("Hello")
-        })
+        checkAuthentication()
     }, [])
 
-    const refreshToken = async () => {
-        const refreshToken = localStorage.getItem(REFRESH_TOKEN)
+    const checkAuthentication = async () => {
         try {
-            const response = await fetch(BASE_URL + "refresh/", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ refresh: refreshToken }),
+            const response = await fetch(BASE_URL + "auth-check/", {
+                method: 'GET',
                 credentials: 'include',
             })
             if (response.status == 200) {
-                const data = await response.json()
-                localStorage.setItem(ACCESS_TOKEN, data.ACCESS_TOKEN)
                 console.log("Authorization success")
                 setIsAuthorized(true)
             } else {
-                console.error("Failed token refresh")
-                setIsAuthorized(false)
+                throw new Error("Failed token refresh")
             }
 
         } catch (error) {
@@ -48,27 +36,6 @@ const RouteProtected: React.FC = () => {
         }
     }
 
-    const auth = async () => {
-        const token = localStorage.getItem(ACCESS_TOKEN)
-        if (!token) {
-            setIsAuthorized(false)
-            setIsLoading(false)
-            console.log("!token")
-            return
-        }
-
-        const decoded = jwtDecode(token)
-        const tokenExpiration = decoded.exp
-        const now = Date.now() / 1000
-
-        if (tokenExpiration && tokenExpiration < now) {
-            console.log("22222")
-            await refreshToken()
-        } else {
-            setIsAuthorized(true)
-            setIsLoading(false)
-        }
-    }
 
     if (isLoading) {
         return <div>Loading...</div>
