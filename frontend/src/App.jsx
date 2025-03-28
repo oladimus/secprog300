@@ -5,16 +5,11 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import NotFound from './pages/NotFound'
+import Logout from './components/Logout'
 
-function Logout() {
-  localStorage.clear()
-  return <Navigate to="/login" />
-}
 
-function LogoutAndRegister() {
-  localStorage.clear()
-  return <Register />
-}
+
+
 
 function App() {
 
@@ -29,10 +24,15 @@ function App() {
             </RouteProtected>
           }
         />
-        <Route path="/login" element={<Login/>}/>
-        <Route path="/register" element={<LogoutAndRegister/>}/>
-        <Route path="/logout" element={<Logout/>}/>
-        <Route path="*" element={<NotFound/>}/>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={
+          <Logout route="/register">
+            <Register />
+          </Logout>
+        }
+        />
+        <Route path="/logout" element={<Logout route="/login" />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

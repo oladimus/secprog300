@@ -3,9 +3,9 @@ import AuthenticationForm from "../components/AuthenticationForm"
 
 
 const Register = () => {
-    return <AuthenticationForm 
-    isRegister={true}
-    route="http://localhost:8000/api/user/register/"
+    return <AuthenticationForm
+        isRegister={true}
+        route="http://localhost:8000/api/user/register/"
     />
 }
 

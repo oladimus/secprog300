@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { jwtDecode } from 'jwt-decode'
 import { ACCESS_TOKEN, REFRESH_TOKEN } from '../constants'
@@ -7,7 +7,11 @@ import Home from '../pages/Home'
 
 const BASE_URL = `http://localhost:8000/api/`
 
-const RouteProtected: React.FC = () => {
+interface RouteProtectedProps {
+    children: ReactNode
+}
+
+const RouteProtected: React.FC<RouteProtectedProps> = ({ children }) => {
     const [isAuthorized, setIsAuthorized] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
 
@@ -41,7 +45,7 @@ const RouteProtected: React.FC = () => {
         return <div>Loading...</div>
     }
 
-    return isAuthorized ? <Home /> : <Navigate to="/login" />
+    return isAuthorized ? children : <Navigate to="/login" />
 
 }
 

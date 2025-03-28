@@ -6,7 +6,7 @@ import { ACCESS_TOKEN, REFRESH_TOKEN } from "../constants"
 interface AuthenticationFormProps {
     isRegister: boolean;
     route: string;
-  }
+}
 
 const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
     isRegister,
