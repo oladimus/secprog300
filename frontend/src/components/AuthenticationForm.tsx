@@ -1,8 +1,6 @@
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ACCESS_TOKEN, REFRESH_TOKEN } from "../constants"
-
-
+import "../styles/form.css"
 interface AuthenticationFormProps {
     isRegister: boolean;
     route: string;
@@ -29,6 +27,7 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
             })
             if (!response.ok) {
                 const errorData = await response.json()
+                console.log(errorData)
                 let errormsg = ""
                 if (isRegister) {
                     errorData.username ? errormsg = errorData.username : errorData.password.password.forEach((element: string) => {
@@ -77,7 +76,15 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
         <button className="form-button" type="submit">
             {isRegister ? "Register" : "Login"}
         </button>
+        <button
+            className="toggle-button"
+            onClick={isRegister ? () => navigate("/login") : () => navigate("/register")}
+            type="button"
+        >
+            {isRegister ? "Login instead" : "Register instead"}
+        </button>
     </form >
+
 }
 
 
