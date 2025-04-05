@@ -29,7 +29,6 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
             })
             if (!response.ok) {
                 const errorData = await response.json()
-                console.log(errorData)
                 let errormsg = ""
                 if (isRegister) {
                     errorData.username ? errormsg = errorData.username : errorData.password.password.forEach((element: string) => {
