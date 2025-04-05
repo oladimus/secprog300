@@ -27,10 +27,24 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                 body: JSON.stringify({ username, password }),
                 credentials: 'include',
             })
-            if (response.ok && !isRegister) {
-                navigate("/")
+            if (!response.ok) {
+                const errorData = await response.json()
+                console.log(errorData)
+                let errormsg = ""
+                if (isRegister) {
+                    errorData.username ? errormsg = errorData.username : errorData.password.password.forEach((element: string) => {
+                        errormsg += `${element} `
+                    });
+                } else {
+                    errormsg = errorData.detail
+                }
+                alert(errormsg)
             } else {
-                navigate("/login")
+                if (!isRegister) {
+                    navigate("/")
+                } else {
+                    navigate("/login")
+                }
             }
         } catch (error) {
             alert(error)
