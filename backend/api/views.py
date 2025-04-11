@@ -10,6 +10,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator   
+from django_ratelimit.decorators import ratelimit
+from .models import LoginAttempt
+from django.contrib.auth import authenticate
 
 
 # Create your views here.
@@ -40,9 +44,32 @@ class CreateUserView(generics.CreateAPIView):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     permission_classes = [AllowAny]
-
+    @method_decorator(ratelimit(key='ip', rate='5/m', block=True))
     def post(self, request, *args, **kwargs):
+
+        # For logging the login attempt:
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        user = authenticate(username=username, password=password)
+
+        login_attempt = LoginAttempt(
+            username=username,
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_env=request.META.get('HTTP_USER_AGENT')
+        )
+
+        if user is None:
+            login_attempt.success = False
+            login_attempt.reason = "Invalid credentials"
+            login_attempt.save()
+        else :
+            login_attempt.success = True
+            login_attempt.save()
+
+        # Authentication
         response = super().post(request, *args, **kwargs)
+
         if response.status_code == 200:
             tokens = response.data
 
@@ -81,6 +108,7 @@ class CustomTokenRefreshView(TokenRefreshView):
                 samesite='Lax'
             )
         return response
+
 
 class checkAuthenticationView(APIView):
     permission_classes = [IsAuthenticated]

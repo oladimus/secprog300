@@ -1,3 +1,10 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import (
+    LoginAttempt
+)
+
+@admin.register(LoginAttempt)
+
+class ESManagerAdmin(admin.ModelAdmin):
+    pass

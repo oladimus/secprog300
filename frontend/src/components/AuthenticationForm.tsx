@@ -12,7 +12,7 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
 }) => {
     const [username, setUsername] = useState("")
     const [password, setPassword] = useState("")
-    const [loading, setLoading] = useState(false)
+    const [errorMsg, setErrorMsg] = useState("")
     const navigate = useNavigate()
 
     const fetchAuthentication = async () => {
@@ -30,13 +30,17 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                 console.log(errorData)
                 let errormsg = ""
                 if (isRegister) {
-                    errorData.username ? errormsg = errorData.username : errorData.password.password.forEach((element: string) => {
+                    errorData.username ? errormsg = errorData.username : errorData.password.password ? errorData.password.password.forEach((element: string) => {
                         errormsg += `${element} `
-                    });
+                    }) : errormsg = "Empty password field!";
                 } else {
-                    errormsg = errorData.detail
+                    if (response.status === 403) {
+                        errormsg = "Too many login attempts!"
+                    } else {
+                        errormsg = errorData.detail
+                    }
                 }
-                alert(errormsg)
+                setErrorMsg(errormsg)
             } else {
                 if (!isRegister) {
                     navigate("/")
@@ -47,18 +51,18 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
         } catch (error) {
             alert(error)
         } finally {
-            setLoading(false)
+
         }
     }
 
     const handleSubmit = (e: React.FormEvent) => {
-        setLoading(true)
         e.preventDefault()
         fetchAuthentication()
     }
 
     return <form onSubmit={handleSubmit} className="form-container">
         <h1>{isRegister ? "Register" : "Login"}</h1>
+        <h3>{errorMsg}</h3>
         <input
             className="form-input"
             type="text"

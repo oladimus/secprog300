@@ -9,3 +9,5 @@ sqlparse
 psycopg2-binary
 python-dotenv
 django[argon2]
+django-ratelimit
+django-redis
