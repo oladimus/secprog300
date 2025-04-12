@@ -109,10 +109,14 @@ class CustomTokenRefreshView(TokenRefreshView):
             )
         return response
 
-
+# check if authenticated and get user e
 class checkAuthenticationView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        return Response({"message": "Authenticated"}, status=status.HTTP_200_OK)
+        user = request.user
+        return Response({
+            "name": user.get_username(),
+            "id": user.id,
+        }, status=status.HTTP_200_OK)
     

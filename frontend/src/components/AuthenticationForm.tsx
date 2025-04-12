@@ -30,6 +30,7 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                 console.log(errorData)
                 let errormsg = ""
                 if (isRegister) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
                     errorData.username ? errormsg = errorData.username : errorData.password.password ? errorData.password.password.forEach((element: string) => {
                         errormsg += `${element} `
                     }) : errormsg = "Empty password field!";
@@ -45,13 +46,11 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                 if (!isRegister) {
                     navigate("/")
                 } else {
-                    navigate("/login")
+                    navigate("/authenticate/login")
                 }
             }
         } catch (error) {
             alert(error)
-        } finally {
-
         }
     }
 
@@ -82,7 +81,7 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
         </button>
         <button
             className="toggle-button"
-            onClick={isRegister ? () => navigate("/login") : () => navigate("/register")}
+            onClick={isRegister ? () => navigate("/authenticate/login") : () => navigate("/authenticate/register")}
             type="button"
         >
             {isRegister ? "Login instead" : "Register instead"}

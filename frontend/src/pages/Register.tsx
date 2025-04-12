@@ -1,11 +1,12 @@
-import React, { ReactElement } from "react"
+import React from "react"
 import AuthenticationForm from "../components/AuthenticationForm"
+import {API_URL} from "../constants"
 
 
 const Register = () => {
     return <AuthenticationForm
         isRegister={true}
-        route="http://localhost:8000/api/user/register/"
+        route = {`${API_URL}/api/user/register/`}
     />
 }
 

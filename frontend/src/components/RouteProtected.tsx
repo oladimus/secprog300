@@ -1,19 +1,30 @@
-import React, { ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
-import { jwtDecode } from 'jwt-decode'
-import { ACCESS_TOKEN, REFRESH_TOKEN } from '../constants'
+import React, { createContext, ReactNode, useContext } from 'react'
+import { Navigate} from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import Home from '../pages/Home'
+import { API_URL } from '../constants'
 
-const BASE_URL = `http://localhost:8000/api/`
+
+
+interface Session {
+    user?: {
+        id?: string | null;
+        name?: string | null;
+        image?: string | null;
+        email?: string | null;
+    } 
+}
+
+const SessionContext = createContext<Session>({});
+
+export const useSession = () => useContext(SessionContext);
 
 interface RouteProtectedProps {
     children: ReactNode
 }
-
-const RouteProtected: React.FC<RouteProtectedProps> = ({ children }) => {
+const RouteProtected: React.FC<RouteProtectedProps> = ({children}) => {
     const [isAuthorized, setIsAuthorized] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
+    const [session, setSession] = useState<Session['user']>();
 
     useEffect(() => {
         checkAuthentication()
@@ -21,17 +32,19 @@ const RouteProtected: React.FC<RouteProtectedProps> = ({ children }) => {
 
     const checkAuthentication = async () => {
         try {
-            const response = await fetch(BASE_URL + "auth-check/", {
+            const response = await fetch(API_URL + "/api/auth-check/", {
                 method: 'GET',
                 credentials: 'include',
             })
             if (response.status == 200) {
+                const data = await response.json()
+                setSession(data)
                 console.log("Authorization success")
                 setIsAuthorized(true)
+            
             } else {
                 throw new Error("Failed token refresh")
             }
-
         } catch (error) {
             console.log(error)
             setIsAuthorized(false)
@@ -40,12 +53,17 @@ const RouteProtected: React.FC<RouteProtectedProps> = ({ children }) => {
         }
     }
 
-
     if (isLoading) {
         return <div>Loading...</div>
     }
 
-    return isAuthorized ? children : <Navigate to="/login" />
+    return isAuthorized ? (
+        <SessionContext.Provider value={{ user: session }}>
+          {children}
+        </SessionContext.Provider>
+      ) : (
+        <Navigate to="/authenticate/login" />
+      );
 
 }
 

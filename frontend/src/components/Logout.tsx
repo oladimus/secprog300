@@ -1,29 +1,20 @@
-import React, { ReactNode, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Register from '../pages/Register'
-const BASE_URL = `http://localhost:8000/api/`
+import { API_URL } from '../constants'
 
-interface LogoutProps {
-    route: string
-    children: ReactNode
-}
 
-const Logout: React.FC<LogoutProps> = ({
-    route, children
-}) => {
+const Logout = () => {
     const navigate = useNavigate()
 
     useEffect(() => {
         const handleLogout = async () => {
             try {
-                const res = await fetch(BASE_URL + "user/logout/", {
+                const res = await fetch(API_URL + "/api/user/logout/", {
                     method: 'GET',
                     credentials: 'include',
                 })
                 if (res.status == 200) {
-                    if (route === "/login") {
-                        navigate(route)
-                    }
+                    navigate("/login")
                 } else {
                     console.error("Logout failed")
                 }
@@ -33,8 +24,6 @@ const Logout: React.FC<LogoutProps> = ({
         }
         handleLogout()
     }, [navigate])
-
-    return children
 
 }
 

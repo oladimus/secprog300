@@ -43,6 +43,7 @@
   margin: 0 0.5rem;
   cursor: pointer;
   background: #eee;
+  background-color: #007bff;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
