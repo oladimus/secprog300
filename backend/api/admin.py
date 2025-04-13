@@ -1,10 +1,14 @@
 from django.contrib import admin
 
 from .models import (
-    LoginAttempt
+    LoginAttempt,
+    FriendRequest,
+    FriendShip,
 )
 
 @admin.register(LoginAttempt)
+@admin.register(FriendShip)
+@admin.register(FriendRequest)
 
-class ESManagerAdmin(admin.ModelAdmin):
+class Admin(admin.ModelAdmin):
     pass

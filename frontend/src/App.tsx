@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { Navigation } from '@toolpad/core';
-import { Dashboard as DashboardIcon } from '@mui/icons-material'
-import getTheme from './theme'
+import { Dashboard as DashboardIcon, People } from '@mui/icons-material'
 import { useNavigate } from "react-router-dom"
 import { useSession } from './components/RouteProtected';
 
@@ -16,25 +15,24 @@ const NAVIGATION: Navigation = [
     title: 'Dashboard',
     icon: <DashboardIcon />,
   },
+  {
+    segment: 'friends',
+    title: 'Friends',
+    icon: <People />,
+  },
 ];
 
 const BRANDING = {
   title: 'My Toolpad Core App',
 };
 
-import { CssBaseline, ThemeProvider, useMediaQuery } from "@mui/material"
+import { CssBaseline } from "@mui/material"
 import { ReactRouterAppProvider } from '@toolpad/core/react-router';
 import { API_URL } from './constants';
 
 
 const App: React.FC = () => {
   const navigate = useNavigate()
-  const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
-  const [mode, setMode] = useState<'light' | 'dark'>(
-    prefersDarkMode ? 'dark' : 'light'
-  );
-
-  const theme = useMemo(() => getTheme(mode), [mode]);
   const session = useSession()
 
 
