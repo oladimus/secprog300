@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.models import User
 from rest_framework import generics
+from django.db.models import Q
 from .serializers import FriendRequestSerializer, FriendSerializer, UserSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -15,6 +16,7 @@ from django_ratelimit.decorators import ratelimit
 from .models import LoginAttempt, FriendRequest, FriendShip
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework.serializers import ValidationError
+from rest_framework.decorators import api_view, permission_classes
 
 # Create your views here.
 
@@ -127,21 +129,80 @@ class checkAuthenticationView(APIView):
             status=status.HTTP_200_OK,
         )
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def delete_friend(request):
+    friend_username = request.data.get("friend")
+    if not friend_username:
+        return Response({"detail": "No friend specified."}, status=400)
+
+    try:
+        friend_user = User.objects.get(username=friend_username)
+    except User.DoesNotExist:
+        return Response({"detail": "User does not exist."}, status=404)
+
+    try:
+        friendship = FriendShip.objects.get(
+            Q(user1=request.user, user2=friend_user) |
+            Q(user1=friend_user, user2=request.user)
+        )
+        friendship.delete()
+        return Response({"detail": "Friend removed successfully."}, status=200)
+    except FriendShip.DoesNotExist:
+        return Response({"detail": "No friendship between users."}, status=404)
+    
 
 class FriendRequestView(generics.CreateAPIView):
     serializer_class = FriendRequestSerializer
     permission_classes = [IsAuthenticated]
     queryset = FriendRequest.objects.all()
 
-    def perform_create(self, serializer):
-        receiver_id = self.request.data.get("receiver")
-        if int(receiver_id) == self.request.user.id:
-            raise ValidationError("You cannot send a friend request to yourself.")
+    def create(self, request, *args, **kwargs):
+        receiver_name = request.data.get("receiver")
+
+        if not receiver_name:
+            return Response(
+                {"detail": "Enter a username."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if receiver_name == request.user.get_username():
+            return Response(
+                {"detail": "You cannot send a friend request to yourself."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            receiver = User.objects.get(username=receiver_name)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         if FriendRequest.objects.filter(
-            sender=self.request.user, receiver_id=receiver_id
+            Q(sender=request.user, receiver=receiver) |
+            Q(sender=receiver, receiver=request.user)
         ).exists():
-            raise ValidationError("Friend request already sent")
-        serializer.save(sender=self.request.user)
+            return Response(
+                {"detail": "Friend request already sent."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+
+        if FriendShip.objects.filter(
+            Q(user1=request.user, user2=receiver) |
+            Q(user1=receiver, user2=request.user)).exists():
+            return Response(
+                {"detail": "Friend already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(sender=request.user, receiver=receiver)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class FriendListView(APIView):
@@ -162,6 +223,15 @@ class PendingFriendRequestsView(generics.ListAPIView):
         return FriendRequest.objects.filter(
             receiver=self.request.user, status="pending"
         )
+    
+
+
+class SentFriendRequestsView(generics.ListAPIView):
+    serializer_class = FriendRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return FriendRequest.objects.filter(sender=self.request.user, status="pending")
 
 
 class RespondToFriendRequestView(APIView):
@@ -184,4 +254,6 @@ class RespondToFriendRequestView(APIView):
             friend_request.reject()
             return Response({"detail": "Friend request rejected"})
         else:
-            return Response({"detail": "invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "invalid action"}, status=status.HTTP_400_BAD_REQUEST
+            )

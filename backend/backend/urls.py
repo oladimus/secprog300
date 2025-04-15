@@ -27,6 +27,8 @@ from api.views import (
     FriendRequestView,
     PendingFriendRequestsView,
     RespondToFriendRequestView,
+    SentFriendRequestsView,
+    delete_friend,
 )
 
 urlpatterns = [
@@ -53,4 +55,10 @@ urlpatterns = [
         PendingFriendRequestsView.as_view(),
         name="friendrequests-view",
     ),
+    path(
+        "api/friendrequest/sent/",
+        SentFriendRequestsView.as_view(),
+        name="friendrequests-sent-view",
+    ),
+    path("api/friend/delete/", delete_friend, name="del-friend")
 ]
