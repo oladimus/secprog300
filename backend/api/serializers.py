@@ -21,13 +21,15 @@ class UserSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data)
         return user
 
-class FriendRequestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = FriendRequest
-        fields = ['id', 'sender', 'receiver', 'status', 'created_at']
-        read_only_fields = ['sender', 'status', 'created_at']
 
 class FriendSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["username"]
+        fields = ["id", "username"]
+
+class FriendRequestSerializer(serializers.ModelSerializer):
+    sender = FriendSerializer(read_only=True)
+    receiver = FriendSerializer(read_only=True)
+    class Meta:
+        model = FriendRequest
+        fields = ['id', 'sender', 'receiver', 'status', 'created_at']

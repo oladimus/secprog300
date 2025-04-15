@@ -42,7 +42,7 @@ class FriendRequest(models.Model):
         super().save(*args, **kwargs)
 
     def accept(self):
-        self.status = 'Accepted'
+        self.status = 'accepted'
         self.save()
         FriendShip.objects.create(user1=self.sender, user2= self.receiver)
 

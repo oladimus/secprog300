@@ -7,7 +7,7 @@ import Layout from './layouts/dashboard.tsx';
 import RouteProtected from './components/RouteProtected.tsx';
 import Login from './pages/Login.tsx';
 import Register from './pages/Register.tsx';
-import Friendlist from './components/FriendList.tsx';
+import FriendlistManager from './components/FriendListManager.tsx';
 
 const router = createBrowserRouter([
   {
@@ -27,7 +27,7 @@ const router = createBrowserRouter([
             children: [
               {
                 path: 'friends',
-                Component: Friendlist
+                Component: FriendlistManager
               }
             ]
           },
