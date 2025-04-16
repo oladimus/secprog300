@@ -10,15 +10,38 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 from .models import LoginAttempt, FriendRequest, FriendShip
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework.serializers import ValidationError
 from rest_framework.decorators import api_view, permission_classes
+from datetime import datetime, timedelta
+import redis
 
-# Create your views here.
+r = redis.Redis()
+
+def login_violation(request):
+    """Progressive rate limit for failed login attempts"""
+
+    ip = request.META.get('REMOTE_ADDR')
+    key = f"login_rate_violation:{ip}"
+    count = r.incr(key)
+    r.expire(key, 3600) # violation expires in one hour
+
+    if count == 1:
+        r.setex(f"ban:{ip}", 60, 1) # first block for 1 min
+
+    elif count == 2:
+        r.setex(f"ban:{ip}", 600, 1) # 2nd block for 10 mins
+    
+    elif count >= 3:
+        r.setex(f"ban:{ip}", 1800, 1) # 3rd block for 30 mins
+
+
+
+
 
 
 def logout_view(request):
@@ -40,10 +63,15 @@ def logout_view(request):
     return response
 
 
+
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
+
+    @method_decorator(ratelimit(key="ip", rate="1/h", block=True))
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -51,7 +79,10 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
     @method_decorator(ratelimit(key="ip", rate="5/m", block=True))
     def post(self, request, *args, **kwargs):
-
+        # Check for too many login attempts
+        ip = request.META.get('REMOTE_ADDR')
+        if r.exists(f"ban:{ip}"):
+            return HttpResponse("Temporarily banned: too many login attempts", status=403)
         # For logging the login attempt:
         username = request.data.get("username")
         password = request.data.get("password")

@@ -30,10 +30,14 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                 console.log(errorData)
                 let errormsg = ""
                 if (isRegister) {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                    errorData.username ? errormsg = errorData.username : errorData.password.password ? errorData.password.password.forEach((element: string) => {
-                        errormsg += `${element} `
-                    }) : errormsg = "Empty password field!";
+                    if (response.status === 403) {
+                        errormsg = "Too many registers!"
+                    } else {
+                        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                        errorData.username ? errormsg = errorData.username : errorData.password.password ? errorData.password.password.forEach((element: string) => {
+                            errormsg += `${element} `
+                        }) : errormsg = "Empty password field!";
+                    }
                 } else {
                     if (response.status === 403) {
                         errormsg = "Too many login attempts!"
