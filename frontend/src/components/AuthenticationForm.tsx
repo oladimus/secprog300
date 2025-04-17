@@ -22,7 +22,7 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ "username": username, "password": password }),
                 credentials: 'include',
             })
             if (!response.ok) {
@@ -33,10 +33,11 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                     if (response.status === 403) {
                         errormsg = "Too many registers!"
                     } else {
-                        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                        errorData.username ? errormsg = errorData.username : errorData.password.password ? errorData.password.password.forEach((element: string) => {
-                            errormsg += `${element} `
-                        }) : errormsg = "Empty password field!";
+                        if(errorData?.username) {
+                            errormsg = errorData.username
+                        } else if (errorData?.password) {
+                            errormsg = errorData.password.join(' ')
+                        }
                     }
                 } else {
                     errormsg = errorData.detail
@@ -56,7 +57,9 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        fetchAuthentication()
+        if(username && password)
+            fetchAuthentication()
+        else setErrorMsg("Cannot have empty fields!")
     }
 
     return <form onSubmit={handleSubmit} className="form-container">

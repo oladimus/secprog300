@@ -80,7 +80,7 @@ class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key="ip", rate="10/h", block=True))
+    @method_decorator(ratelimit(key="ip", rate="100/h", block=True))
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
