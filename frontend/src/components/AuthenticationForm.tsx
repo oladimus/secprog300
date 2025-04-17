@@ -39,11 +39,7 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
                         }) : errormsg = "Empty password field!";
                     }
                 } else {
-                    if (response.status === 403) {
-                        errormsg = "Too many login attempts!"
-                    } else {
-                        errormsg = errorData.detail
-                    }
+                    errormsg = errorData.detail
                 }
                 setErrorMsg(errormsg)
             } else {

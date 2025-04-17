@@ -18,6 +18,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from api.views import (
+    CustomAdminLoginView,
     CreateUserView,
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
@@ -30,6 +31,8 @@ from api.views import (
     SentFriendRequestsView,
     delete_friend,
 )
+
+admin.site.login = CustomAdminLoginView.as_view()
 
 urlpatterns = [
     path("admin/", admin.site.urls),

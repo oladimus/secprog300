@@ -2,12 +2,19 @@ import React, { useEffect, useState } from 'react'
 import { API_URL } from '../constants'
 import FriendTable from './FriendTable'
 import { Friend, FriendRequest } from '../types'
+import Alert from '@mui/material/Alert';
+import { Snackbar } from '@mui/material';
+
 
 const FriendlistManager = () => {
 
     const [friends, setFriends] = useState<Friend[]>([])
     const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([])
     const [sentFriendRequests, setSentFriendRequests] = useState<FriendRequest[]>([])
+
+    const [alertOpen, setAlertOpen] = useState(false)
+    const [alertMessage, setAlertMessage] = useState("")
+    const [alertSeverity, setAlertSeverity] = useState<'success' | 'error' | 'info'>('info')
 
     useEffect(() => {
         checkFriends()
@@ -98,11 +105,9 @@ const FriendlistManager = () => {
                 credentials: 'include',
             })
             const data = await response.json()
-            if (!response.ok) {
-                alert(data.detail)
-                throw new Error("Failed to send friend request")
-            }
-            alert("Friendrequest sent!")
+            setAlertMessage(data.detail)
+            setAlertSeverity(response.ok ? 'success' : 'error')
+            setAlertOpen(true)
         } catch (error) {
             console.log(error)
         }
@@ -124,7 +129,9 @@ const FriendlistManager = () => {
                 credentials: 'include',
             })
             const data = await response.json()
-            alert(data.detail)
+            setAlertMessage(data.detail)
+            setAlertSeverity(response.ok ? 'success' : 'error')
+            setAlertOpen(true)
         } catch (error) {
             console.log(error)
         }
@@ -145,24 +152,42 @@ const FriendlistManager = () => {
                 credentials: 'include',
             })
             const data = await response.json()
-            alert(data.detail)
+            setAlertMessage(data.detail)
+            setAlertSeverity(response.ok ? 'success' : 'error')
+            setAlertOpen(true)
         } catch (error) {
             console.log(error)
         }
     }
 
     return (
-        <FriendTable
-            friends={friends}
-            friendRequests={friendRequests}
-            sentFriendRequests={sentFriendRequests}
-            sendFriendRequest={sendFriendRequest}
-            respondFriendRequest={respondFriendRequest}
-            deleteFriend={deleteFriend}
-            checkFriends={checkFriends}
-            checkIncomingFriendRequests={checkIncomingFriendRequests}
-            checkSentFriendRequests={checkSentFriendRequests}
-        />
+        <>
+            <FriendTable
+                friends={friends}
+                friendRequests={friendRequests}
+                sentFriendRequests={sentFriendRequests}
+                sendFriendRequest={sendFriendRequest}
+                respondFriendRequest={respondFriendRequest}
+                deleteFriend={deleteFriend}
+                checkFriends={checkFriends}
+                checkIncomingFriendRequests={checkIncomingFriendRequests}
+                checkSentFriendRequests={checkSentFriendRequests}
+            />
+            <Snackbar
+                open={alertOpen}
+                autoHideDuration={4000}
+                onClose={() => setAlertOpen(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={() => setAlertOpen(false)}
+                    severity={alertSeverity}
+                >
+                    {alertMessage}
+                </Alert>
+            </Snackbar>
+        </>
+
     )
 }
 

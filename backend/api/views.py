@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.models import User
+from django.contrib.auth.views import LoginView
 from rest_framework import generics
 from django.db.models import Q
 from .serializers import FriendRequestSerializer, FriendSerializer, UserSerializer
@@ -17,16 +18,16 @@ from .models import LoginAttempt, FriendRequest, FriendShip
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework.serializers import ValidationError
 from rest_framework.decorators import api_view, permission_classes
-from datetime import datetime, timedelta
+import time
 import redis
 
-r = redis.Redis()
+r = redis.Redis(host='redis', port=6379, db=0)
 
-def login_violation(request):
+def handle_violation(request):
     """Progressive rate limit for failed login attempts"""
 
     ip = request.META.get('REMOTE_ADDR')
-    key = f"login_rate_violation:{ip}"
+    key = f"rate_violation:{ip}"
     count = r.incr(key)
     r.expire(key, 3600) # violation expires in one hour
 
@@ -43,9 +44,8 @@ def login_violation(request):
 
 
 
-
 def logout_view(request):
-    # Blacklist refresh token after logout
+    """Blacklist refresh token after logout"""
     refresh_token = request.COOKIES.get("refresh_token")
     if refresh_token:
         try:
@@ -62,14 +62,25 @@ def logout_view(request):
     response.status_code = 200
     return response
 
+class CustomAdminLoginView(LoginView):
+    template_name = "admin/login.html"
 
+    @method_decorator(ratelimit(key="ip", rate="5/m", block=False))
+    def dispatch(self, request, *args, **kwargs):
+        ip = request.META.get('REMOTE_ADDR')
+        if r.exists(f"ban:{ip}"):
+            return HttpResponse(f"Temporarily banned, too many login attempts",status=429)
+        if getattr(request, "limited", False):
+            handle_violation(request)
+            return HttpResponse({"Too many login attempts. Try again later."},status=429)
+        return super().dispatch(request, *args, **kwargs)
 
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key="ip", rate="1/h", block=True))
+    @method_decorator(ratelimit(key="ip", rate="10/h", block=True))
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
@@ -77,12 +88,18 @@ class CreateUserView(generics.CreateAPIView):
 class CustomTokenObtainPairView(TokenObtainPairView):
     permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key="ip", rate="5/m", block=True))
+    @method_decorator(ratelimit(key="ip", rate="5/m", block=False))
     def post(self, request, *args, **kwargs):
-        # Check for too many login attempts
+        # Check if person is blocked due to too many login attempts
         ip = request.META.get('REMOTE_ADDR')
         if r.exists(f"ban:{ip}"):
-            return HttpResponse("Temporarily banned: too many login attempts", status=403)
+            duration = r.expiretime(f"ban:{ip}") - int(time.time())
+            return Response({"detail": f"Temporarily banned: too many login attempts, {duration} seconds remaining"},status=429)
+        # Check if person exceeded the rate limit and handle the violation
+        if (getattr(request, "limited", "false")):
+            handle_violation(request)
+            return Response({"detail": "Too many login attempts!"},status=429)
+        
         # For logging the login attempt:
         username = request.data.get("username")
         password = request.data.get("password")
@@ -233,7 +250,7 @@ class FriendRequestView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(sender=request.user, receiver=receiver)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response({"detail": "Friend request sent!"}, status=status.HTTP_201_CREATED)
 
 
 class FriendListView(APIView):

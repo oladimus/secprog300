@@ -1,7 +1,7 @@
 import { Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from '@mui/material'
 import React, { useState } from 'react'
 import { Friend, FriendRequest } from '../types'
-import { Check, Clear, Delete, PersonAdd } from '@mui/icons-material'
+import { Check, Clear, Delete, PersonAdd, TableRows } from '@mui/icons-material'
 
 interface FriendTableProps {
     friends: Friend[]
@@ -33,22 +33,33 @@ const FriendTable: React.FC<FriendTableProps> = ({
     checkSentFriendRequests
 }) => {
 
-    const [showWhat, setShowWhat] = useState<"friends" | "sent requests" | "incoming requests">("friends")
+    const [showWhat, setShowWhat] = useState<"friends" | "friend requests">("friends")
     const [writtenUser, setWrittenUser] = useState<string>("")
 
     const handleShowView = () => {
-        if (showWhat === "friends")
-            setShowWhat("incoming requests")
-        if (showWhat === "incoming requests")
-            setShowWhat("sent requests")
-        if (showWhat === "sent requests")
+        if (showWhat === "friends") {
+            setShowWhat("friend requests")
+        } else {
             setShowWhat("friends")
+        }
+
     }
 
     const fetchAllData = async () => {
         checkFriends()
         checkIncomingFriendRequests()
         checkSentFriendRequests()
+    }
+
+    const cleanDate = (date: string) => {
+         return new Date(date).toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+         })
     }
 
     return (
@@ -73,79 +84,78 @@ const FriendTable: React.FC<FriendTableProps> = ({
                 }}
 
                 >
-                    switchview
+                    {showWhat}
                 </Button>
             </Box>
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
-                        <TableRow sx={{}}>
-                            <TableCell>
-                                <strong>{showWhat.toUpperCase()}</strong>
+                        <TableRow>
+                            <TableCell variant="head" colSpan={3} sx={{fontSize: 20, fontWeight: "bold"}}>
+                                {showWhat.toUpperCase()}
                             </TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {showWhat === "friends" ? friends.map((fri) => {
-                            return (
+                        {showWhat === "friends" && (
+                            friends.map((fri) => (
                                 <TableRow key={fri.id}>
-                                    <TableCell>
-                                        {fri.username}
-                                    </TableCell>
+                                    <TableCell>{fri.username}</TableCell>
                                     <TableCell>
                                         <Button
                                             onClick={async () => {
-                                                await deleteFriend(fri.username)
-                                                fetchAllData()
-                                            }}>
+                                                await deleteFriend(fri.username);
+                                                fetchAllData();
+                                            }}
+                                        >
                                             <Delete />
                                         </Button>
                                     </TableCell>
                                 </TableRow>
-                            )
-                        }
-                        ) : (showWhat === "incoming requests" &&
-                            friendRequests.map((req) => {
-                                return (
+                            ))
+                        )}
+
+                        {showWhat === "friend requests" && (
+                            <>
+                                {friendRequests.map((req) => (
                                     <TableRow key={req.id}>
-                                        <TableCell>
-                                            {req.sender.username}
-                                        </TableCell>
+                                        <TableCell>{req.sender.username}</TableCell>
                                         <TableCell>
                                             <Button
                                                 onClick={async () => {
-                                                    await respondFriendRequest("reject", req.id)
-                                                    fetchAllData()
+                                                    await respondFriendRequest("reject", req.id);
+                                                    fetchAllData();
                                                 }}
                                             >
                                                 <Clear />
                                             </Button>
-                                        </TableCell>
-                                        <TableCell>
                                             <Button
                                                 onClick={async () => {
-                                                    await respondFriendRequest("accept", req.id)
-                                                    fetchAllData()
+                                                    await respondFriendRequest("accept", req.id);
+                                                    fetchAllData();
                                                 }}
                                             >
                                                 <Check />
                                             </Button>
                                         </TableCell>
+                                        <TableCell >{cleanDate(req.created_at)}</TableCell>
                                     </TableRow>
-                                )
-                            })
-                            || showWhat === "sent requests" &&
-                            sentFriendRequests.map((req) => {
-                                return (
+                                ))}
+
+                                <TableRow>
+                                    <TableCell variant="head" colSpan={3} sx={{fontSize: 20, fontWeight: "bold"}}>
+                                        SENT REQUESTS
+                                    </TableCell>
+                                </TableRow>
+                                {sentFriendRequests.map((req) => (
                                     <TableRow key={req.id}>
-                                        <TableCell>
-                                            {req.receiver.username}
-                                        </TableCell>
+                                        <TableCell >{req.receiver.username}</TableCell>
+                                        <TableCell >{req.status}</TableCell>
+                                        <TableCell >{cleanDate(req.created_at)}</TableCell>
                                     </TableRow>
-                                )
-                            })
-                        )
-                        }
+                                ))}
+                            </>
+                        )}
                     </TableBody>
                 </Table>
             </TableContainer>
