@@ -84,7 +84,7 @@ const FriendTable: React.FC<FriendTableProps> = ({
                 }}
 
                 >
-                    {showWhat}
+                    SWITCH
                 </Button>
             </Box>
             <TableContainer component={Paper}>

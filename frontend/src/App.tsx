@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { Navigation } from '@toolpad/core';
-import { Dashboard as DashboardIcon, People } from '@mui/icons-material'
+import { Chat, People } from '@mui/icons-material'
 import { useNavigate } from "react-router-dom"
 import { useSession } from './components/RouteProtected';
 
@@ -12,8 +12,9 @@ const NAVIGATION: Navigation = [
     title: 'Main items',
   },
   {
-    title: 'Dashboard',
-    icon: <DashboardIcon />,
+    segment: 'chat',
+    title: 'Chat',
+    icon: <Chat />,
   },
   {
     segment: 'friends',

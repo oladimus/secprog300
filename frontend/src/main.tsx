@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import React from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router';
-import Layout from './layouts/dashboard.tsx';
+import Layout from './layouts/DefaultLayout.tsx';
 import RouteProtected from './components/RouteProtected.tsx';
 import Login from './pages/Login.tsx';
 import Register from './pages/Register.tsx';
 import FriendlistManager from './components/FriendListManager.tsx';
+import ChatApp from './components/ChatApp.tsx';
+import ChatLayout from './layouts/ChatLayout.tsx';
+import DefaultLayout from './layouts/DefaultLayout.tsx';
 
 const router = createBrowserRouter([
   {
@@ -19,18 +22,28 @@ const router = createBrowserRouter([
     children: [
       {
         path: '/',
-        Component: App,
         children: [
           {
             path: '',
-            Component: Layout,
+            Component: ChatLayout,
             children: [
               {
-                path: 'friends',
-                Component: FriendlistManager
+                path: 'chat',
+                Component: ChatApp
               }
             ]
           },
+          {
+            path: 'friends',
+            Component: DefaultLayout,
+            children: [
+              {
+                path: '',
+                Component: FriendlistManager
+              }
+            ]
+          }
+
         ]
       }
     ]
