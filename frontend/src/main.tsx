@@ -29,7 +29,11 @@ const router = createBrowserRouter([
             children: [
               {
                 path: 'chat',
-                Component: ChatApp
+                element: (
+                  <RouteProtected>
+                    <ChatApp />
+                  </RouteProtected>
+                ),
               }
             ]
           },
@@ -39,7 +43,11 @@ const router = createBrowserRouter([
             children: [
               {
                 path: '',
-                Component: FriendlistManager
+                element: (
+                  <RouteProtected>
+                    <FriendlistManager />
+                  </RouteProtected>
+                ),
               }
             ]
           }

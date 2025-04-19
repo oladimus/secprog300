@@ -28,6 +28,12 @@ const FriendlistManager = () => {
         console.log("SentFriendRequests state updated:", sentFriendRequests)
     }, [friends])
 
+    // Helper to get cookie by name
+    const getCookie = (name: string): string | null => {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+        return match ? match[2] : null
+    }
+
     const checkFriends = async () => {
         try {
             const response = await fetch(API_URL + "/api/friends/", {
@@ -94,10 +100,12 @@ const FriendlistManager = () => {
         receiver: string,
     ) => {
         try {
+            const csrfToken = getCookie('csrftoken')?.trim()
             const response = await fetch(API_URL + "/api/friendrequest/send/", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken || ''
                 },
                 body: JSON.stringify({
                     "receiver": receiver
@@ -118,10 +126,12 @@ const FriendlistManager = () => {
         reqId: number
     ) => {
         try {
+            const csrfToken = getCookie('csrftoken')?.trim()
             const response = await fetch(API_URL + "/api/friendrequest/respond/" + reqId + "/", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken || ''
                 },
                 body: JSON.stringify({
                     "action": res
@@ -141,10 +151,12 @@ const FriendlistManager = () => {
         name: string
     ) => {
         try {
+            const csrfToken = getCookie('csrftoken')?.trim()
             const response = await fetch(API_URL + "/api/friend/delete/", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken || ''
                 },
                 body: JSON.stringify({
                     "friend": name

@@ -15,33 +15,33 @@ from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 from .models import LoginAttempt, FriendRequest, FriendShip
-from django.contrib.auth import authenticate, get_user_model
-from rest_framework.serializers import ValidationError
+from django.contrib.auth import authenticate
 from rest_framework.decorators import api_view, permission_classes
+from django.views.decorators.csrf import ensure_csrf_cookie
+from .utils import csrf_check
 import time
 import redis
 
-r = redis.Redis(host='redis', port=6379, db=0)
+
+r = redis.Redis(host="redis", port=6379, db=0)
+
 
 def handle_violation(request):
     """Progressive rate limit for failed login attempts"""
 
-    ip = request.META.get('REMOTE_ADDR')
+    ip = request.META.get("REMOTE_ADDR")
     key = f"rate_violation:{ip}"
     count = r.incr(key)
-    r.expire(key, 3600) # violation expires in one hour
+    r.expire(key, 3600)  # violation expires in one hour
 
     if count == 1:
-        r.setex(f"ban:{ip}", 60, 1) # first block for 1 min
+        r.setex(f"ban:{ip}", 60, 1)  # first block for 1 min
 
     elif count == 2:
-        r.setex(f"ban:{ip}", 600, 1) # 2nd block for 10 mins
-    
+        r.setex(f"ban:{ip}", 600, 1)  # 2nd block for 10 mins
+
     elif count >= 3:
-        r.setex(f"ban:{ip}", 1800, 1) # 3rd block for 30 mins
-
-
-
+        r.setex(f"ban:{ip}", 1800, 1)  # 3rd block for 30 mins
 
 
 def logout_view(request):
@@ -62,18 +62,24 @@ def logout_view(request):
     response.status_code = 200
     return response
 
+
 class CustomAdminLoginView(LoginView):
     template_name = "admin/login.html"
 
     @method_decorator(ratelimit(key="ip", rate="5/m", block=False))
     def dispatch(self, request, *args, **kwargs):
-        ip = request.META.get('REMOTE_ADDR')
+        ip = request.META.get("REMOTE_ADDR")
         if r.exists(f"ban:{ip}"):
-            return HttpResponse(f"Temporarily banned, too many login attempts",status=429)
+            return HttpResponse(
+                f"Temporarily banned, too many login attempts", status=429
+            )
         if getattr(request, "limited", False):
             handle_violation(request)
-            return HttpResponse({"Too many login attempts. Try again later."},status=429)
+            return HttpResponse(
+                {"Too many login attempts. Try again later."}, status=429
+            )
         return super().dispatch(request, *args, **kwargs)
+
 
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -84,22 +90,27 @@ class CreateUserView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-
+@method_decorator(ensure_csrf_cookie, name='post')
 class CustomTokenObtainPairView(TokenObtainPairView):
     permission_classes = [AllowAny]
 
     @method_decorator(ratelimit(key="ip", rate="5/m", block=False))
     def post(self, request, *args, **kwargs):
         # Check if person is blocked due to too many login attempts
-        ip = request.META.get('REMOTE_ADDR')
+        ip = request.META.get("REMOTE_ADDR")
         if r.exists(f"ban:{ip}"):
             duration = r.expiretime(f"ban:{ip}") - int(time.time())
-            return Response({"detail": f"Temporarily banned: too many login attempts, {duration} seconds remaining"},status=429)
+            return Response(
+                {
+                    "detail": f"Temporarily banned: too many login attempts, {duration} seconds remaining"
+                },
+                status=429,
+            )
         # Check if person exceeded the rate limit and handle the violation
-        if (getattr(request, "limited", "false")):
+        if getattr(request, "limited", "false"):
             handle_violation(request)
-            return Response({"detail": "Too many login attempts!"},status=429)
-        
+            return Response({"detail": "Too many login attempts!"}, status=429)
+
         # For logging the login attempt:
         username = request.data.get("username")
         password = request.data.get("password")
@@ -148,25 +159,31 @@ class CustomTokenRefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            tokens = response.data
-            response.data = {"Message": "Token refreshed"}
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response({"detail": "Missing refresh token"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            refresh = RefreshToken(refresh_token)
+            access_token = str(refresh.access_token)
 
+            response = Response({"Message": "Token refreshed"})
             response.set_cookie(
                 key="access_token",
-                value=tokens["access"],
+                value=access_token,
                 httponly=True,
-                secure=False,  # true for production
-                samesite="Lax",
+                secure=False, # true for production
+                samesite="Lax"
             )
-        return response
+            return response
+        except TokenError:
+            return Response({"detail": "Invalid refresh token"}, status=401)
 
 
-# check if authenticated and get user e
+# check if authenticated and get user information
 class checkAuthenticationView(APIView):
     permission_classes = [IsAuthenticated]
-
+    
     def get(self, request):
         user = request.user
         return Response(
@@ -180,6 +197,10 @@ class checkAuthenticationView(APIView):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def delete_friend(request):
+    csrf_error = csrf_check(request)
+    if csrf_error:
+        return csrf_error
+
     friend_username = request.data.get("friend")
     if not friend_username:
         return Response({"detail": "No friend specified."}, status=400)
@@ -191,14 +212,14 @@ def delete_friend(request):
 
     try:
         friendship = FriendShip.objects.get(
-            Q(user1=request.user, user2=friend_user) |
-            Q(user1=friend_user, user2=request.user)
+            Q(user1=request.user, user2=friend_user)
+            | Q(user1=friend_user, user2=request.user)
         )
         friendship.delete()
         return Response({"detail": "Friend removed successfully."}, status=200)
     except FriendShip.DoesNotExist:
         return Response({"detail": "No friendship between users."}, status=404)
-    
+
 
 class FriendRequestView(generics.CreateAPIView):
     serializer_class = FriendRequestSerializer
@@ -206,6 +227,9 @@ class FriendRequestView(generics.CreateAPIView):
     queryset = FriendRequest.objects.all()
 
     def create(self, request, *args, **kwargs):
+        csrf_error = csrf_check(request)
+        if csrf_error:
+            return csrf_error
         receiver_name = request.data.get("receiver")
 
         if not receiver_name:
@@ -229,18 +253,18 @@ class FriendRequestView(generics.CreateAPIView):
             )
 
         if FriendRequest.objects.filter(
-            Q(sender=request.user, receiver=receiver) |
-            Q(sender=receiver, receiver=request.user)
+            Q(sender=request.user, receiver=receiver)
+            | Q(sender=receiver, receiver=request.user)
         ).exists():
             return Response(
                 {"detail": "Friend request already sent."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
 
         if FriendShip.objects.filter(
-            Q(user1=request.user, user2=receiver) |
-            Q(user1=receiver, user2=request.user)).exists():
+            Q(user1=request.user, user2=receiver)
+            | Q(user1=receiver, user2=request.user)
+        ).exists():
             return Response(
                 {"detail": "Friend already exists."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -250,7 +274,9 @@ class FriendRequestView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(sender=request.user, receiver=receiver)
 
-        return Response({"detail": "Friend request sent!"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"detail": "Friend request sent!"}, status=status.HTTP_201_CREATED
+        )
 
 
 class FriendListView(APIView):
@@ -271,7 +297,6 @@ class PendingFriendRequestsView(generics.ListAPIView):
         return FriendRequest.objects.filter(
             receiver=self.request.user, status="pending"
         )
-    
 
 
 class SentFriendRequestsView(generics.ListAPIView):
@@ -286,6 +311,9 @@ class RespondToFriendRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        csrf_error = csrf_check(request)
+        if csrf_error:
+            return csrf_error
         try:
             friend_request = FriendRequest.objects.get(pk=pk, receiver=request.user)
         except FriendRequest.DoesNotExist:

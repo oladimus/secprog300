@@ -25,11 +25,31 @@ const RouteProtected: React.FC<RouteProtectedProps> = ({children}) => {
     const [isAuthorized, setIsAuthorized] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [session, setSession] = useState<Session['user']>();
+    const [tokenRefreshed, setTokenRefreshed] = useState(false)
 
     useEffect(() => {
-        checkAuthentication()
+        refreshToken()
     }, [])
 
+    
+    const refreshToken = async () => {
+        try {
+            const response = await fetch(API_URL + "/api/token/refresh/", {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                method: 'POST',
+                credentials: 'include',
+            })
+            if (response.status == 200) {
+                console.log("Token refresh success")
+                setTokenRefreshed(true)
+                checkAuthentication()
+            } 
+        } catch (error) {
+            console.log(error)
+        }
+    }
     const checkAuthentication = async () => {
         try {
             const response = await fetch(API_URL + "/api/auth-check/", {
@@ -43,7 +63,7 @@ const RouteProtected: React.FC<RouteProtectedProps> = ({children}) => {
                 setIsAuthorized(true)
             
             } else {
-                throw new Error("Failed token refresh")
+                throw new Error("Failed authorization")
             }
         } catch (error) {
             console.log(error)
