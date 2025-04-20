@@ -17,16 +17,9 @@ const FriendlistManager = () => {
     const [alertSeverity, setAlertSeverity] = useState<'success' | 'error' | 'info'>('info')
 
     useEffect(() => {
-        checkFriends()
-        checkIncomingFriendRequests()
-        checkSentFriendRequests()
+        fetchAllData()
     }, [])
 
-    useEffect(() => {
-        console.log("Friends state updated:", friends)
-        console.log("FriendRequests state updated:", friendRequests)
-        console.log("SentFriendRequests state updated:", sentFriendRequests)
-    }, [friends])
 
     // Helper to get cookie by name
     const getCookie = (name: string): string | null => {
@@ -34,65 +27,19 @@ const FriendlistManager = () => {
         return match ? match[2] : null
     }
 
-    const checkFriends = async () => {
+    const fetchAllData = async () => {
         try {
-            const response = await fetch(API_URL + "/api/friends/", {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-            })
-            if (response.status == 200) {
-                const data = await response.json()
-                setFriends(data)
-            } else {
-                throw new Error("Failed to check friends")
-            }
-        } catch (error) {
-            console.log(error)
-        }
-    }
+            const [friendsRes, incomingRes, sentRes] = await Promise.all([
+                fetch(API_URL + "/api/friends/", { method: 'GET', headers: { 'Content-Type': 'application/json' }, credentials: 'include' }),
+                fetch(API_URL + "/api/friendrequest/view/", { method: 'GET', headers: { 'Content-Type': 'application/json' }, credentials: 'include' }),
+                fetch(API_URL + "/api/friendrequest/sent/", { method: 'GET', headers: { 'Content-Type': 'application/json' }, credentials: 'include' }),
+            ])
 
-    const checkIncomingFriendRequests = async () => {
-        try {
-            const response = await fetch(API_URL + "/api/friendrequest/view/", {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-            })
-            if (response.status == 200) {
-                const data = await response.json()
-                setFriendRequests(data)
-
-            } else {
-                console.log(response)
-                throw new Error("Failed to check inc requests")
-            }
+            if (friendsRes.ok) setFriends(await friendsRes.json())
+            if (incomingRes.ok) setFriendRequests(await incomingRes.json())
+            if (sentRes.ok) setSentFriendRequests(await sentRes.json())
         } catch (error) {
-            console.log(error)
-        }
-    }
-    const checkSentFriendRequests = async () => {
-        try {
-            const response = await fetch(API_URL + "/api/friendrequest/sent/", {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-            })
-            if (response.status == 200) {
-                const data = await response.json()
-                setSentFriendRequests(data)
-
-            } else {
-                throw new Error("Failed to check sent requests!")
-            }
-        } catch (error) {
-            console.log(error)
+            console.error(error)
         }
     }
 
@@ -181,9 +128,7 @@ const FriendlistManager = () => {
                 sendFriendRequest={sendFriendRequest}
                 respondFriendRequest={respondFriendRequest}
                 deleteFriend={deleteFriend}
-                checkFriends={checkFriends}
-                checkIncomingFriendRequests={checkIncomingFriendRequests}
-                checkSentFriendRequests={checkSentFriendRequests}
+                fetchAllData={fetchAllData}
             />
             <Snackbar
                 open={alertOpen}
