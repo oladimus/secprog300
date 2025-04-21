@@ -3,8 +3,19 @@ from django.db.models import UniqueConstraint
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.contrib.auth.models import AbstractUser
 
-User = get_user_model()
+
+class User(AbstractUser):
+    e2ee_public_key = models.TextField(null=True, blank=True)
+
+    def has_key(self):
+        if self.e2ee_public_key == (None or ""):
+            return False
+        else:
+            return True
+            
+    
 
 class LoginAttempt(models.Model):
     username = models.CharField(max_length=30)
@@ -67,3 +78,10 @@ class FriendShip(models.Model):
         friendships = FriendShip.objects.filter(models.Q(user1=user) | models.Q(user2=user))
         friends = [f.user2 if f.user1 == user else f.user1 for f in friendships]
         return friends
+    
+class Message(models.Model):
+    sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
+    content = models.TextField() # Encrypted
+    timestamp = models.DateTimeField(auto_now_add=True)
+    iv = models.CharField(max_length=64) # for AES-GCM

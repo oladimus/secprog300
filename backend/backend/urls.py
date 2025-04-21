@@ -30,6 +30,7 @@ from api.views import (
     RespondToFriendRequestView,
     SentFriendRequestsView,
     delete_friend,
+    UpdateUserView,
 )
 
 admin.site.login = CustomAdminLoginView.as_view()
@@ -63,5 +64,6 @@ urlpatterns = [
         SentFriendRequestsView.as_view(),
         name="friendrequests-sent-view",
     ),
-    path("api/friend/delete/", delete_friend, name="del-friend")
+    path("api/friend/delete/", delete_friend, name="del-friend"),
+    path("api/user/update/", UpdateUserView.as_view(), name="update_user")
 ]

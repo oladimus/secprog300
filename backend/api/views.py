@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404, render
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.contrib.auth.views import LoginView
 from rest_framework import generics
 from django.db.models import Q
@@ -24,6 +24,7 @@ import redis
 
 
 r = redis.Redis(host="redis", port=6379, db=0)
+User = get_user_model()
 
 
 def handle_violation(request):
@@ -42,6 +43,35 @@ def handle_violation(request):
 
     elif count >= 3:
         r.setex(f"ban:{ip}", 1800, 1)  # 3rd block for 30 mins
+
+
+class UpdateUserView(APIView):
+    """View to update user information"""
+
+    permission_classes = [IsAuthenticated]
+    allowed_fields = ["first_name", "last_name", "e2ee_public_key"]
+
+    def post(self, request, *args, **kwargs):
+        target_field = request.data.get("update_what")
+        if target_field not in self.allowed_fields:
+            return Response({"detail": "Field not allowed to be updated."}, status=403)
+        value = request.data.get("value")
+        user = request.user
+
+        if not hasattr(user, target_field):
+            return Response(
+                {"detail": "Invalid field."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            setattr(user, target_field, value)
+            user.save()
+            return Response({"detail": "User info updated."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"detail": f"User info update failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 def logout_view(request):
@@ -90,7 +120,8 @@ class CreateUserView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-@method_decorator(ensure_csrf_cookie, name='post')
+
+@method_decorator(ensure_csrf_cookie, name="post")
 class CustomTokenObtainPairView(TokenObtainPairView):
     permission_classes = [AllowAny]
 
@@ -161,8 +192,9 @@ class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get("refresh_token")
         if not refresh_token:
-            return Response({"detail": "Missing refresh token"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Missing refresh token"}, status=status.HTTP_400_BAD_REQUEST
+            )
         try:
             refresh = RefreshToken(refresh_token)
             access_token = str(refresh.access_token)
@@ -172,8 +204,8 @@ class CustomTokenRefreshView(TokenRefreshView):
                 key="access_token",
                 value=access_token,
                 httponly=True,
-                secure=False, # true for production
-                samesite="Lax"
+                secure=False,  # true for production
+                samesite="Lax",
             )
             return response
         except TokenError:
@@ -183,16 +215,14 @@ class CustomTokenRefreshView(TokenRefreshView):
 # check if authenticated and get user information
 class checkAuthenticationView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         user = request.user
         return Response(
-            {
-                "name": user.get_username(),
-                "id": user.id,
-            },
+            {"name": user.get_username(), "id": user.id, "has_key": user.has_key()},
             status=status.HTTP_200_OK,
         )
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
