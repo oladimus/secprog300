@@ -5,6 +5,7 @@ from .models import (
     LoginAttempt,
     FriendRequest,
     FriendShip,
+    Message,
 )
 
 User = get_user_model()
@@ -23,6 +24,7 @@ class CustomUserAdmin(UserAdmin):
         }),
     )
 
+@admin.register(Message)
 @admin.register(LoginAttempt)
 @admin.register(FriendShip)
 @admin.register(FriendRequest)

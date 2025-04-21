@@ -31,6 +31,7 @@ from api.views import (
     SentFriendRequestsView,
     delete_friend,
     UpdateUserView,
+    MessageView,
 )
 
 admin.site.login = CustomAdminLoginView.as_view()
@@ -43,27 +44,28 @@ urlpatterns = [
     path("api/auth-check/", checkAuthenticationView.as_view(), name="auth_check"),
     path("api/user/logout/", logout_view, name="logout"),
     path("api_auth/", include("rest_framework.urls")),
-    path("api/friends/", FriendListView.as_view(), name="friend-list"),
+    path("api/friends/", FriendListView.as_view(), name="friend_list"),
     path(
         "api/friendrequest/send/",
         FriendRequestView.as_view(),
-        name="send-friendrequest",
+        name="send_friendrequest",
     ),
     path(
         "api/friendrequest/respond/<int:pk>/",
         RespondToFriendRequestView.as_view(),
-        name="respond-friendrequest",
+        name="respond_friendrequest",
     ),
     path(
         "api/friendrequest/view/",
         PendingFriendRequestsView.as_view(),
-        name="friendrequests-view",
+        name="friendrequests_view",
     ),
     path(
         "api/friendrequest/sent/",
         SentFriendRequestsView.as_view(),
-        name="friendrequests-sent-view",
+        name="friendrequests_sent_view",
     ),
-    path("api/friend/delete/", delete_friend, name="del-friend"),
-    path("api/user/update/", UpdateUserView.as_view(), name="update_user")
+    path("api/friend/delete/", delete_friend, name="del_friend"),
+    path("api/user/update/", UpdateUserView.as_view(), name="update_user"),
+    path("api/message/", MessageView.as_view(), name="message"),
 ]

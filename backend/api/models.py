@@ -7,10 +7,10 @@ from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
-    e2ee_public_key = models.TextField(null=True, blank=True)
+    e2ee_public_key = models.JSONField(null=True, blank=True)
 
     def has_key(self):
-        if self.e2ee_public_key == (None or ""):
+        if self.e2ee_public_key is None:
             return False
         else:
             return True

@@ -3,7 +3,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.views import LoginView
 from rest_framework import generics
 from django.db.models import Q
-from .serializers import FriendRequestSerializer, FriendSerializer, UserSerializer
+from .serializers import (
+    FriendRequestSerializer,
+    FriendSerializer,
+    UserSerializer,
+    MessageSerializer,
+)
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -14,7 +19,7 @@ from rest_framework import status
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
-from .models import LoginAttempt, FriendRequest, FriendShip
+from .models import LoginAttempt, FriendRequest, FriendShip, Message
 from django.contrib.auth import authenticate
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -315,7 +320,7 @@ class FriendListView(APIView):
     def get(self, request):
         user = request.user
         friends = FriendShip.get_friends(user)
-        serializer = FriendSerializer(friends, many=True)
+        serializer = FriendSerializer(friends, many=True, read_only=True)
         return Response(serializer.data)
 
 
@@ -363,3 +368,35 @@ class RespondToFriendRequestView(APIView):
             return Response(
                 {"detail": "invalid action"}, status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class MessageView(generics.CreateAPIView):
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Message.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        csrf_error = csrf_check(request)
+        if csrf_error:
+            return csrf_error
+
+        receiver_id = request.data.get("receiver_id")
+        receiver = User.objects.get(id=receiver_id)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(sender=request.user, receiver=receiver)
+        return Response({"detail": "Message sent!"}, status=status.HTTP_201_CREATED)
+    
+    def get(self, request, *args, **kwargs):
+        other_user_id = request.query_params.get("with")
+        if not other_user_id:
+            return Response({"detail": "Missing id."}, status=400)
+
+        messages = Message.objects.filter(
+            sender=request.user, receiver__id=other_user_id
+        ) | Message.objects.filter(
+            sender__id=other_user_id, receiver=request.user
+        )
+        messages = messages.order_by("timestamp")
+        serializer = self.get_serializer(messages, many=True)
+        return Response(serializer.data)

@@ -2,7 +2,7 @@ import React, { createContext, ReactNode, useContext } from 'react'
 import { Navigate} from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { API_URL } from '../constants'
-
+import { InitialUserKeyGeneration } from './KeyGeneration'
 
 
 interface Session {
@@ -53,8 +53,10 @@ const RouteProtected: React.FC<RouteProtectedProps> = ({children}) => {
             })
             if (response.status == 200) {
                 const data = await response.json()
+                if(!data.has_key) {
+                    InitialUserKeyGeneration(data.id)
+                }
                 setSession(data)
-                console.log("Authorization success")
                 setIsAuthorized(true)
             
             } else {
