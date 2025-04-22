@@ -13,7 +13,7 @@ import { Friend } from "../types"
 import { API_URL } from "../constants"
 import {
     genSharedKey, getPrivateKey, convertPublicKey,
-    base64ToArrayBuffer, arrayBufferToBase64
+    arrayBufferToBase64
 } from "./KeyGeneration"
 import { useSession } from "./RouteProtected"
 
@@ -95,9 +95,6 @@ const ChatApp: React.FC = () => {
                     "content": msgBase64,
                     "iv": ivBase64
                 })
-
-
-
             })
             if (response.ok) {
                 const data = await response.json()
@@ -144,7 +141,7 @@ const ChatApp: React.FC = () => {
                 {selectedFriend ? (
                     <ChatWindow
                         friend={selectedFriend}
-                        handleSendMessage={encryptAndSendMessage}
+                        encryptAndSendMessage={encryptAndSendMessage}
                     />
                 ) : (
                     <Typography>Select a friend to start chatting</Typography>

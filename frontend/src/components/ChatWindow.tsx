@@ -16,33 +16,30 @@ import { useSession } from "./RouteProtected"
 
 interface ChatWindowProps {
     friend: Friend
-    handleSendMessage: (
+    encryptAndSendMessage: (
         message: string,
         receiverId: number,
         receiverPublicKey: JsonWebKey
-    ) => void
+    ) => Promise<void>
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
     friend,
-    handleSendMessage
+    encryptAndSendMessage
 }) => {
     const bottomRef = useRef<HTMLDivElement | null>(null);
-    const [sharedKey, setSharedKey] = useState<CryptoKey | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
     const [newMessage, setNewMessage] = useState("")
 
     const session = useSession()
 
-    useEffect(() => {
-        console.log(messages, sharedKey)
-    }, [messages, sharedKey])
-    const sendMessage = () => {
+    const sendMessage = async () => {
         if (!newMessage.trim()) return
-        setMessages([...messages])
-        handleSendMessage(newMessage, friend.id, friend.e2ee_public_key)
+        // Send encrypted message to backend
+        await encryptAndSendMessage(newMessage, friend.id, friend.e2ee_public_key)
         setNewMessage("")
-        // You'd also send the message to backend here
+        fetchMessages(friend.id)
+
     }
     const getSharedKey = async () => {
         // get priv key from indexedDB
@@ -56,17 +53,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }
         // calculate shared key
         const sharedKey = await genSharedKey(senderPrivKey, receiverPubKey)
-        setSharedKey(sharedKey)
+        return sharedKey
     }
 
     const handleDecryptMessages = async () => {
-        console.log(messages)
-        await getSharedKey()
-        if (sharedKey !== null) {
+        const sharedKey = await getSharedKey()
+        if (sharedKey) {
             const decryptedMsgs = await decryptMessages(messages, sharedKey)
             setMessages(decryptedMsgs)
         }
-        console.log(messages)
     }
 
     const fetchMessages = async (id: number) => {
@@ -83,7 +78,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 const data = await response.json()
                 setMessages(data)
                 console.log(data)
-
             } else {
                 throw new Error("Failed to check friends")
             }
@@ -93,7 +87,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
     useEffect(() => {
         fetchMessages(friend.id)
-    }, [])
+    }, [friend])
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -103,6 +97,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         <Box ref={bottomRef} >
             <Typography variant="h5" gutterBottom>
                 Chat with {friend.username}
+                <Button 
+                variant="contained"
+                sx={{ml: "10px"}}
+                onClick={() => fetchMessages(friend.id)}>
+                    REFRESH
+                </Button>
             </Typography>
             <List sx={{ maxHeight: "500px", overflowY: "auto", mb: 2, minHeight: "500px" }}>
                 {messages.map((msg, idx) => (
@@ -114,6 +114,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                                 borderRadius: 2,
                                 px: 2,
                                 py: 1,
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+
                             }}
                             primary={msg.content}
                         />
@@ -126,9 +129,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     placeholder="Type your message..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                         if (e.key === "Enter") {
-                            sendMessage()
+                            await sendMessage()
                             e.preventDefault()
                         }
                     }

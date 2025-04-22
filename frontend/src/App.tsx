@@ -24,7 +24,7 @@ const NAVIGATION: Navigation = [
 ];
 
 const BRANDING = {
-  title: 'My Toolpad Core App',
+  title: 'E2EE Messager',
 };
 
 import { CssBaseline } from "@mui/material"
