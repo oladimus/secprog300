@@ -12,6 +12,7 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
 }) => {
     const [username, setUsername] = useState("")
     const [password, setPassword] = useState("")
+    const [checkPassword, setCheckPassword] = useState("")
     const [errorMsg, setErrorMsg] = useState("")
     const navigate = useNavigate()
 
@@ -58,7 +59,11 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if(username && password)
-            fetchAuthentication()
+            if(checkPassword === password || !isRegister){
+                fetchAuthentication()
+            } else {
+                setErrorMsg("Passwords do not match!")
+            }
         else setErrorMsg("Cannot have empty fields!")
     }
 
@@ -79,6 +84,16 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
         />
+        {isRegister?
+        <input
+        className="form-input"
+        type="password"
+        value={checkPassword}
+        onChange={(e) => setCheckPassword(e.target.value)}
+        placeholder="Type password again"
+        >
+        
+        </input> : null}
         <button className="form-button" type="submit">
             {isRegister ? "Register" : "Login"}
         </button>
