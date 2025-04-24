@@ -54,4 +54,9 @@ jobs:
 
       - name: OWASP ZAP
         run: |
-            docker run --rm -v $(pwd):/zap/wrk/:rw -t owasp/zap2docker-stable zap-baseline.py -t ${{ secrets.APP_URL }} -r zap-report.html
+            docker run --rm -v $(pwd):/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy zap-baseline.py -t ${{ secrets.APP_URL }} -r zap-report.html -I
+      
+      - name: OWASP ZAP 2
+        run: |
+            docker run --rm -v $(pwd):/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy zap-baseline.py -t http://192.168.232.128:8000 -r zap-report2.html -I
+
