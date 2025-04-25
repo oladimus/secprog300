@@ -43,7 +43,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
     const getSharedKey = async () => {
         // get priv key from indexedDB
-        const senderPrivKey = await getPrivateKey(Number(session.user?.id))
+        const senderPrivKey = await getPrivateKey(Number(session.user?.id), String(session.user?.name))
         // convert public key into cryptokey from jwk
         const receiverPubKey = await convertPublicKey(friend.e2ee_public_key)
 

@@ -4,7 +4,7 @@ import { Message } from "../types";
 
 
 // Generate initial keypair for the user, only once
-export async function InitialUserKeyGeneration(userId: number) {
+export async function InitialUserKeyGeneration(userId: number, username: string) {
   // +
   // https://developer.mozilla.org/en-US/docs/Web/API/EcKeyGenParams
   const keyPair = await window.crypto.subtle.generateKey(
@@ -47,7 +47,7 @@ export async function InitialUserKeyGeneration(userId: number) {
 
     const privateKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey)
 
-    await db.put('keys', privateKeyJwk, `privatekey-${userId}`)
+    await db.put('keys', privateKeyJwk, `privatekey-${userId}-${username}`)
 
   } catch (error) {
     console.log(error)
@@ -72,10 +72,10 @@ export async function convertPublicKey(receiverPublicKey: JsonWebKey) {
 }
 
 // Get users private key from IndexedDB
-export async function getPrivateKey(userId: number) {
+export async function getPrivateKey(userId: number, username: string) {
   try {
     const db = await openDB('keys-db', 1)
-    const storedKey = await db.get('keys', `privatekey-${userId}`)
+    const storedKey = await db.get('keys', `privatekey-${userId}-${username}`)
 
     const privateKey = await crypto.subtle.importKey(
       'jwk',
@@ -105,39 +105,30 @@ export async function genSharedKey(senderPrivKey: CryptoKey, receiverPubKey: Cry
       name: 'AES-GCM',
       length: 256,
     },
-    false,
+    true,
     ['encrypt', 'decrypt']
   )
-
+  
   return sharedSecret
 }
 
 // Convert encrypted message (arrayBuffer) into base64 string to store the encrypted msg
 // in the database
 export function arrayBufferToBase64(buffer: ArrayBuffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)));
 }
 
 // Convert from base64 string back to arrayBuffer to decrypt the message later
 export function base64ToArrayBuffer(base64: string) {
-  const binary_string = window.atob(base64)
-  const len = binary_string.length
-  const bytes = new Uint8Array(len)
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary_string.charCodeAt(i)
-  }
-  return bytes.buffer
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
 // Function for decrypting the messages with secret shared key
 export async function decryptMessages(messages: Message[], sharedKey: CryptoKey) {
+  const rawKey = await crypto.subtle.exportKey("raw", sharedKey);
+  console.log(arrayBufferToBase64(rawKey))
   const dec = new TextDecoder()
+  console.log(messages)
   const decryptedMessages = await Promise.all(
     messages.map(async (msg) => {
       const encryptedBuffer = base64ToArrayBuffer(msg.content)

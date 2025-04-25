@@ -40,7 +40,7 @@ const ChatApp: React.FC = () => {
             })
             if (response.status == 200) {
                 setFriends(await response.json())
-                console.log(await getPrivateKey(Number(session.user?.id)))
+                console.log(await getPrivateKey(Number(session.user?.id), String(session.user?.name)))
             } else {
                 throw new Error("Failed to check friends")
             }
@@ -59,7 +59,7 @@ const ChatApp: React.FC = () => {
         receiverPublicKey: JsonWebKey
     ) => {
         // get priv key from indexedDB
-        const senderPrivKey = await getPrivateKey(Number(session.user?.id))
+        const senderPrivKey = await getPrivateKey(Number(session.user?.id), String(session.user?.name))
         // convert public key into cryptokey from jwk
         const receiverPubKey = await convertPublicKey(receiverPublicKey)
         
