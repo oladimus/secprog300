@@ -57,6 +57,9 @@ class UpdateUserView(APIView):
     allowed_fields = ["first_name", "last_name", "e2ee_public_key"]
 
     def post(self, request, *args, **kwargs):
+        csrf_error = csrf_check(request)
+        if csrf_error:
+            return csrf_error
         target_field = request.data.get("update_what")
         if target_field not in self.allowed_fields:
             return Response({"detail": "Field not allowed to be updated."}, status=403)
@@ -78,9 +81,11 @@ class UpdateUserView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-
 def logout_view(request):
     """Blacklist refresh token after logout"""
+    csrf_error = csrf_check(request)
+    if csrf_error:
+        return csrf_error
     refresh_token = request.COOKIES.get("refresh_token")
     if refresh_token:
         try:
@@ -217,8 +222,10 @@ class CustomTokenRefreshView(TokenRefreshView):
             return Response({"detail": "Invalid refresh token"}, status=401)
 
 
-# check if authenticated and get user information
+
+@method_decorator(ensure_csrf_cookie, name="get")
 class checkAuthenticationView(APIView):
+    # check if authenticated and get user information
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -386,6 +393,15 @@ class MessageView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(sender=request.user, receiver=receiver)
         return Response({"detail": "Message sent!"}, status=status.HTTP_201_CREATED)
+    
+    def delete(self, request, *args, **kwargs):
+        csrf_error = csrf_check(request)
+        if csrf_error:
+            return csrf_error
+        user = request.user
+        messages = Message.objects.filter(sender=user) | Message.objects.filter(receiver=user)
+        messages.delete()
+        return Response({"detail": "Message history deleted"})
     
     def get(self, request, *args, **kwargs):
         other_user_id = request.query_params.get("with")

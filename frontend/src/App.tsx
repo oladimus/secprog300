@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { Navigation } from '@toolpad/core';
-import { Chat, People } from '@mui/icons-material'
+import { Chat, People, Settings } from '@mui/icons-material'
 import { useNavigate } from "react-router-dom"
 import { useSession } from './components/RouteProtected';
 
@@ -21,6 +21,11 @@ const NAVIGATION: Navigation = [
     title: 'Friends',
     icon: <People />,
   },
+  {
+    segment: 'settings',
+    title: 'Settings',
+    icon: <Settings />
+  }
 ];
 
 const BRANDING = {
@@ -30,6 +35,7 @@ const BRANDING = {
 import { CssBaseline } from "@mui/material"
 import { ReactRouterAppProvider } from '@toolpad/core/react-router';
 import { API_URL } from './constants';
+import { getCsrfToken } from './utils';
 
 
 const App: React.FC = () => {
@@ -52,7 +58,8 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       const res = await fetch(API_URL + "/api/user/logout/", {
-        method: 'GET',
+        method: 'POST',
+        headers: {"X-CSRFToken" : getCsrfToken()},
         credentials: 'include',
       })
       if (res.status == 200) {

@@ -54,7 +54,7 @@ const RouteProtected: React.FC<RouteProtectedProps> = ({children}) => {
             if (response.status == 200) {
                 const data = await response.json()
                 if(!data.has_key) {
-                    InitialUserKeyGeneration(data.id, data.name)
+                    await InitialUserKeyGeneration(data.id, data.name)
                 }
                 setSession(data)
                 setIsAuthorized(true)

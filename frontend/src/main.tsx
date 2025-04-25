@@ -11,6 +11,7 @@ import FriendlistManager from './components/FriendListManager.tsx';
 import ChatApp from './components/ChatApp.tsx';
 import ChatLayout from './layouts/ChatLayout.tsx';
 import DefaultLayout from './layouts/DefaultLayout.tsx';
+import { Settings } from './pages/Settings.tsx';
 
 const router = createBrowserRouter([
   {
@@ -48,6 +49,20 @@ const router = createBrowserRouter([
                     <FriendlistManager />
                   </RouteProtected>
                 ),
+              }
+            ]
+          },
+          {
+            path: 'settings',
+            Component: DefaultLayout,
+            children: [
+              {
+                path: '',
+                element: (
+                  <RouteProtected>
+                    <Settings />
+                  </RouteProtected>
+                )
               }
             ]
           }

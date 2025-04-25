@@ -16,18 +16,13 @@ import {
     arrayBufferToBase64
 } from "./KeyGeneration"
 import { useSession } from "./RouteProtected"
+import { getCsrfToken } from "../utils"
 
 const ChatApp: React.FC = () => {
     const [friends, setFriends] = useState<Friend[]>([])
     const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null)
 
     const session = useSession()
-    console.log(session.user?.id)
-    // Helper to get cookie by name
-    const getCookie = (name: string): string | null => {
-        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
-        return match ? match[2] : null
-    }
 
     const fetchFriends = async () => {
         try {
@@ -40,7 +35,6 @@ const ChatApp: React.FC = () => {
             })
             if (response.status == 200) {
                 setFriends(await response.json())
-                console.log(await getPrivateKey(Number(session.user?.id), String(session.user?.name)))
             } else {
                 throw new Error("Failed to check friends")
             }
@@ -62,11 +56,14 @@ const ChatApp: React.FC = () => {
         const senderPrivKey = await getPrivateKey(Number(session.user?.id), String(session.user?.name))
         // convert public key into cryptokey from jwk
         const receiverPubKey = await convertPublicKey(receiverPublicKey)
-        
+
         if (!senderPrivKey || !receiverPubKey) return
         // calculate shared key
         const sharedKey = await genSharedKey(senderPrivKey, receiverPubKey)
-
+        if (!sharedKey) {
+            console.log("Error: sharedKey is null")
+            return
+        }
         const enc = new TextEncoder()
 
         const iv = crypto.getRandomValues(new Uint8Array(12)) // 96-bit IV
@@ -80,14 +77,13 @@ const ChatApp: React.FC = () => {
             enc.encode(message)
         )
         try {
-            const csrfToken = getCookie('csrftoken')?.trim()
             const ivBase64 = arrayBufferToBase64(iv)
             const msgBase64 = arrayBufferToBase64(ciphertext)
             const response = await fetch(API_URL + `/api/message/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken || ''
+                    'X-CSRFToken': getCsrfToken()
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -98,10 +94,8 @@ const ChatApp: React.FC = () => {
             })
             if (response.ok) {
                 const data = await response.json()
-                console.log(data)
+                console.log(data.detail)
             } else {
-                const data = await response.json()
-                console.log(data)
                 throw new Error("Failed to send message")
             }
         } catch (error) {

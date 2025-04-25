@@ -1,6 +1,7 @@
 import { API_URL } from "../constants";
 import { openDB } from 'idb'
 import { Message } from "../types";
+import { getCsrfToken } from "../utils";
 
 
 // Generate initial keypair for the user, only once
@@ -15,25 +16,6 @@ export async function InitialUserKeyGeneration(userId: number, username: string)
     true,
     ["deriveKey"]
   );
-
-  // Send public key to backend JWK = JSON WEB KEY format
-  const publicKeyJwk = await window.crypto.subtle.exportKey("jwk", keyPair.publicKey);
-
-  try {
-    const res = await fetch(API_URL + "/api/user/update/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        "update_what": "e2ee_public_key",
-        "value": publicKeyJwk
-      })
-    })
-    const data = await res.json()
-    console.log(data)
-  } catch (error) {
-    console.log(error)
-  }
 
   // Store private key in IndexedDB
   // TODO: encrypt the key
@@ -53,10 +35,36 @@ export async function InitialUserKeyGeneration(userId: number, username: string)
     console.log(error)
   }
 
+  // Send public key to backend JWK = JSON WEB KEY format
+  const publicKeyJwk = await window.crypto.subtle.exportKey("jwk", keyPair.publicKey);
+
+  try {
+    const res = await fetch(API_URL + "/api/user/update/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken(),
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        "update_what": "e2ee_public_key",
+        "value": publicKeyJwk
+      })
+    })
+    const data = await res.json()
+    console.log(data.detail)
+  } catch (error) {
+    console.log(error)
+  }
+
 }
 // Convert from Jwk to cryptokey
 export async function convertPublicKey(receiverPublicKey: JsonWebKey) {
 
+  if (!receiverPublicKey) {
+    console.log("Error: receiverPublicKey is null")
+    return
+  }
   const importedReceiverPubKey = await crypto.subtle.importKey(
     'jwk',
     receiverPublicKey,
@@ -86,7 +94,6 @@ export async function getPrivateKey(userId: number, username: string) {
       },
       true,
       ['deriveKey'])
-    console.log(privateKey)
     return privateKey
   } catch (error) {
     console.log(error)
@@ -95,6 +102,12 @@ export async function getPrivateKey(userId: number, username: string) {
 
 // Generate shared secret key from senders private key and receivers public key
 export async function genSharedKey(senderPrivKey: CryptoKey, receiverPubKey: CryptoKey) {
+  if (!senderPrivKey || !receiverPubKey) {
+    console.log("Error: senderPrivKey or receiverPubKey is null")
+    return
+  }
+  // Derive a shared secret key using ECDH
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveKey
   const sharedSecret = await crypto.subtle.deriveKey(
     {
       name: 'ECDH',
@@ -108,7 +121,7 @@ export async function genSharedKey(senderPrivKey: CryptoKey, receiverPubKey: Cry
     true,
     ['encrypt', 'decrypt']
   )
-  
+
   return sharedSecret
 }
 
@@ -125,10 +138,10 @@ export function base64ToArrayBuffer(base64: string) {
 
 // Function for decrypting the messages with secret shared key
 export async function decryptMessages(messages: Message[], sharedKey: CryptoKey) {
-  const rawKey = await crypto.subtle.exportKey("raw", sharedKey);
-  console.log(arrayBufferToBase64(rawKey))
+  // For debugging
+  // const rawKey = await crypto.subtle.exportKey("raw", sharedKey);
+  // console.log(arrayBufferToBase64(rawKey))
   const dec = new TextDecoder()
-  console.log(messages)
   const decryptedMessages = await Promise.all(
     messages.map(async (msg) => {
       const encryptedBuffer = base64ToArrayBuffer(msg.content)
