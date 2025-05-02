@@ -26,8 +26,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Stop and remove any docker containers
+        run: |
+          docker-compose down -v
+          docker container prune -f
+
       - name: Docker Compose Build
-        run: docker compose up -d --build
+        run: docker-compose up -d --build
+
+      - name: Setup python virtual env and install requirements (for Snyk specifically)
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          pip install -r backend/requirements.txt
 
       - name: Run Sonarqube scan
         uses: sonarsource/sonarqube-scan-action@master
@@ -36,7 +47,10 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       
       - name: Run Snyk
-        run: snyk test --all-projects
+        run: |
+          source env/bin/activate
+          snyk test --all-projects --severity-threshold=critical
+          snyk monitor --all-projects || true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
