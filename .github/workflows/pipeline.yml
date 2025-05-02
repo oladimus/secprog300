@@ -45,25 +45,32 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      
+
       - name: Run Snyk
         run: |
           source env/bin/activate
           snyk test --all-projects --severity-threshold=critical
           snyk monitor --all-projects || true
+          deactivate
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
+      - name: Run Semgrep
+        run: |
+          semgrep scan --config auto --json > semgrepresults.json
+      
+
       - name: Run Trivy filesystem scan
-        run: trivy fs .
+        run: trivy fs . --format table --output trivy-fs.txt
       
       - name: Trivy Container scan
         run: |
           containers=$(docker-compose ps -q)
           for container in $containers; do
             image=$(docker inspect --format='{{.Config.Image}}' $container)
+            filename=$(echo "$image" | sed 's/[^a-zA-Z0-9._-]/_/g')
             echo "Scanning $image"
-            trivy image $image
+            trivy image $image --format table --output ${filename}.txt
           done
 
       - name: OWASP ZAP
@@ -74,6 +81,17 @@ jobs:
         run: |
             docker run --rm -v $(pwd):/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy zap-baseline.py -t http://192.168.232.128:8000 -r zap-report2.html -I
       
-      - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v4
+      - name: Upload all security scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: 
+          name: security reports
+          path: |
+            semgrepresults.json
+            trivy-fs.txt
+            secprog300_backend.txt
+            secprog300_frontend.txt
+            redis*.txt
+            zap-report.html
+            zap-report2.html
 
