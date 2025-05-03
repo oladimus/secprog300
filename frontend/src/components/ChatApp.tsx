@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
     Box,
     Drawer,
@@ -14,14 +14,16 @@ import { API_URL } from "../constants"
 import {
     genSharedKey, getPrivateKey, convertPublicKey,
     arrayBufferToBase64
-} from "./KeyGeneration"
+} from "../KeyGeneration"
 import { useSession } from "./RouteProtected"
 import { getCsrfToken } from "../utils"
+import PasswordDialog from "./PasswordDialog"
 
 const ChatApp: React.FC = () => {
     const [friends, setFriends] = useState<Friend[]>([])
     const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null)
-
+    const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null)
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
     const session = useSession()
 
     const fetchFriends = async () => {
@@ -36,6 +38,9 @@ const ChatApp: React.FC = () => {
             if (response.status == 200) {
                 setFriends(await response.json())
             } else {
+                if(response.status === 401) {
+                    window.location.reload()
+                }
                 throw new Error("Failed to check friends")
             }
         } catch (error) {
@@ -52,8 +57,12 @@ const ChatApp: React.FC = () => {
         receiverId: number,
         receiverPublicKey: JsonWebKey
     ) => {
+        if(!encryptionKey){
+            setPasswordDialogOpen(true)
+            return
+        }
         // get priv key from indexedDB
-        const senderPrivKey = await getPrivateKey(Number(session.user?.id), String(session.user?.name))
+        const senderPrivKey = await getPrivateKey(Number(session.user?.id), String(session.user?.name), encryptionKey)
         // convert public key into cryptokey from jwk
         const receiverPubKey = await convertPublicKey(receiverPublicKey)
 
@@ -104,6 +113,7 @@ const ChatApp: React.FC = () => {
     }
 
     return (
+        <>
         <Box display="flex" position="relative" height="100%">
             <Drawer
                 anchor="left"
@@ -123,7 +133,13 @@ const ChatApp: React.FC = () => {
                     <List>
                         {friends.map((friend) => (
                             <ListItem key={friend.id}>
-                                <ListItemButton onClick={() => setSelectedFriend(friend)}>
+                                <ListItemButton onClick={() => {
+                                    if(encryptionKey){
+                                    setSelectedFriend(friend)
+                                    } else {
+                                        setPasswordDialogOpen(true)
+                                    }
+                                    }}>
                                     <ListItemText primary={friend.username} />
                                 </ListItemButton>
                             </ListItem>
@@ -136,12 +152,20 @@ const ChatApp: React.FC = () => {
                     <ChatWindow
                         friend={selectedFriend}
                         encryptAndSendMessage={encryptAndSendMessage}
+                        encryptionKey={encryptionKey}
                     />
                 ) : (
                     <Typography>Select a friend to start chatting</Typography>
                 )}
             </Box>
         </Box>
+        <PasswordDialog
+        open={passwordDialogOpen}
+        decrypt={true}
+        handlePasswordDialog={setPasswordDialogOpen}
+        setEncryptionKey={setEncryptionKey}
+        />
+        </>
     )
 }
 

@@ -1,9 +1,8 @@
 import React, { createContext, ReactNode, useContext } from 'react'
-import { Navigate} from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { API_URL } from '../constants'
-import { InitialUserKeyGeneration } from './KeyGeneration'
-
+import PasswordDialog from './PasswordDialog'
 
 interface Session {
     user?: {
@@ -11,7 +10,7 @@ interface Session {
         name?: string | null;
         image?: string | null;
         email?: string | null;
-    } 
+    }
 }
 
 const SessionContext = createContext<Session>({});
@@ -21,16 +20,16 @@ export const useSession = () => useContext(SessionContext);
 interface RouteProtectedProps {
     children: ReactNode
 }
-const RouteProtected: React.FC<RouteProtectedProps> = ({children}) => {
+const RouteProtected: React.FC<RouteProtectedProps> = ({ children }) => {
     const [isAuthorized, setIsAuthorized] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [session, setSession] = useState<Session['user']>();
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
 
     useEffect(() => {
         refreshToken()
     }, [])
 
-    
     const refreshToken = async () => {
         try {
             await fetch(API_URL + "/api/token/refresh/", {
@@ -53,12 +52,12 @@ const RouteProtected: React.FC<RouteProtectedProps> = ({children}) => {
             })
             if (response.status == 200) {
                 const data = await response.json()
-                if(!data.has_key) {
-                    await InitialUserKeyGeneration(data.id, data.name)
+                if (!data.has_key) {
+                    setPasswordDialogOpen(true)
                 }
                 setSession(data)
                 setIsAuthorized(true)
-            
+
             } else {
                 throw new Error("Failed authorization")
             }
@@ -75,12 +74,21 @@ const RouteProtected: React.FC<RouteProtectedProps> = ({children}) => {
     }
 
     return isAuthorized ? (
-        <SessionContext.Provider value={{ user: session }}>
-          {children}
-        </SessionContext.Provider>
-      ) : (
+        <>
+            <SessionContext.Provider value={{ user: session }}>
+                {children}
+            </SessionContext.Provider>
+            <SessionContext.Provider value={{ user: session }}>
+                <PasswordDialog
+                    open={passwordDialogOpen}
+                    handlePasswordDialog={setPasswordDialogOpen}
+                    decrypt={false}
+                />
+            </SessionContext.Provider>
+        </>
+    ) : (
         <Navigate to="/authenticate/login" />
-      );
+    );
 
 }
 

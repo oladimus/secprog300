@@ -1,13 +1,76 @@
-import { API_URL } from "../constants";
+import { API_URL } from "./constants";
 import { openDB } from 'idb'
-import { Message } from "../types";
-import { getCsrfToken } from "../utils";
+import { Message } from "./types";
+import { getCsrfToken } from "./utils";
+
+// Derive encryption key from password with PBKDF2
+export async function deriveKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey> {
+  const enc = new TextEncoder()
+  const passwordKey = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  )
+  // https://developer.mozilla.org/en-US/docs/Web/API/Pbkdf2Params
+  // https://developer.mozilla.org/en-US/docs/Web/API/AesKeyGenParams
+  return await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: 600_000,
+      hash: 'SHA-256'
+    },
+    passwordKey,
+    {
+      name: 'AES-GCM',
+      length: 256
+    },
+    true,
+    ['encrypt', 'decrypt']
+  )
+}
+
+// Encrypt a private key (JWK form) before storing it
+export async function encryptPrivateKey(privJwk: JsonWebKey, password: string) {
+  const enc = new TextEncoder()
+  const iv = crypto.getRandomValues(new Uint8Array(12)) // 96 bit iv
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+
+  const key = await deriveKeyFromPassword(password, salt)
+
+  const data = enc.encode(JSON.stringify(privJwk))
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: iv },
+    key,
+    data,
+  )
+
+  return {
+    ciphertext: new Uint8Array(encrypted),
+    iv,
+    salt
+  }
+}
+
+// Decrypt a private key with password
+export async function decryptPrivateKey(
+  ciphertext: Uint8Array, key: CryptoKey,
+  iv: Uint8Array): Promise<JsonWebKey> {
+  const dec = new TextDecoder()
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: iv },
+    key,
+    ciphertext
+  )
+  return JSON.parse(dec.decode(decrypted))
+}
 
 
 // Generate initial keypair for the user, only once
-export async function InitialUserKeyGeneration(userId: number, username: string) {
-  // +
-  // https://developer.mozilla.org/en-US/docs/Web/API/EcKeyGenParams
+export async function InitialUserKeyGeneration(userId: number, username: string, password: string) {
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
   const keyPair = await window.crypto.subtle.generateKey(
     {
       name: "ECDH",
@@ -17,19 +80,25 @@ export async function InitialUserKeyGeneration(userId: number, username: string)
     ["deriveKey"]
   );
 
-  // Store private key in IndexedDB
-  // TODO: encrypt the key
-
+  // create indexedDB storage
   try {
     const db = await openDB('keys-db', 1, {
       upgrade(db) {
         db.createObjectStore('keys')
       }
     })
-
+    // Get private key in jwk format
     const privateKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey)
 
-    await db.put('keys', privateKeyJwk, `privatekey-${userId}-${username}`)
+    // Encrypt the private key with user given password
+    const encryptedPrivateKeyJwk = await encryptPrivateKey(privateKeyJwk, password)
+
+    // Put the encrypted key in indexedDB
+    await db.put('keys', {
+      ciphertext: Array.from(encryptedPrivateKeyJwk.ciphertext),
+      iv: Array.from(encryptedPrivateKeyJwk.iv),
+      salt: Array.from(encryptedPrivateKeyJwk.salt)
+    }, `privatekey-${userId}-${username}`)
 
   } catch (error) {
     console.log(error)
@@ -62,7 +131,7 @@ export async function InitialUserKeyGeneration(userId: number, username: string)
 export async function convertPublicKey(receiverPublicKey: JsonWebKey) {
 
   if (!receiverPublicKey) {
-    console.log("Error: receiverPublicKey is null")
+    console.log("Error: receiverPublicKey is null. Wrong password?")
     return
   }
   const importedReceiverPubKey = await crypto.subtle.importKey(
@@ -80,14 +149,20 @@ export async function convertPublicKey(receiverPublicKey: JsonWebKey) {
 }
 
 // Get users private key from IndexedDB
-export async function getPrivateKey(userId: number, username: string) {
+export async function getPrivateKey(userId: number, username: string, encryptionKey: CryptoKey) {
   try {
     const db = await openDB('keys-db', 1)
-    const storedKey = await db.get('keys', `privatekey-${userId}-${username}`)
+    const stored = await db.get('keys', `privatekey-${userId}-${username}`)
+
+    const privateKeyJwk = await decryptPrivateKey(
+      new Uint8Array(stored.ciphertext),
+      encryptionKey,
+      new Uint8Array(stored.iv)
+    )
 
     const privateKey = await crypto.subtle.importKey(
       'jwk',
-      storedKey,
+      privateKeyJwk,
       {
         name: 'ECDH',
         namedCurve: 'P-256',

@@ -1,7 +1,7 @@
 import { Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from '@mui/material'
 import React, { useState } from 'react'
 import { Friend, FriendRequest } from '../types'
-import { Check, Clear, Delete, PersonAdd, TableRows } from '@mui/icons-material'
+import { Check, Clear, Delete, PersonAdd } from '@mui/icons-material'
 
 interface FriendTableProps {
     friends: Friend[]

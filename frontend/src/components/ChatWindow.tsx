@@ -11,7 +11,7 @@ import {
     Checkbox,
 } from "@mui/material"
 import { Friend, Message } from "../types"
-import { convertPublicKey, decryptMessages, genSharedKey, getPrivateKey } from "./KeyGeneration"
+import { convertPublicKey, decryptMessages, genSharedKey, getPrivateKey } from "../KeyGeneration"
 import { useSession } from "./RouteProtected"
 
 
@@ -22,14 +22,17 @@ interface ChatWindowProps {
         receiverId: number,
         receiverPublicKey: JsonWebKey
     ) => Promise<void>
+    encryptionKey: CryptoKey | null
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
     friend,
-    encryptAndSendMessage
+    encryptAndSendMessage,
+    encryptionKey
 }) => {
     const bottomRef = useRef<HTMLDivElement | null>(null);
     const [messages, setMessages] = useState<Message[]>([])
+    // TODO: use useRef instead of useState for messages
     const [newMessage, setNewMessage] = useState("")
     const [decrypted, setDecrypted] = useState(false)
     const [autoDecrypt, setAutoDecrypt] = useState(true)
@@ -53,7 +56,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
     const getSharedKey = async () => {
         // get priv key from indexedDB
-        const senderPrivKey = await getPrivateKey(Number(session.user?.id), String(session.user?.name))
+        const senderPrivKey = await getPrivateKey(Number(session.user?.id), String(session.user?.name), encryptionKey!)
         // convert public key into cryptokey from jwk
         const receiverPubKey = await convertPublicKey(friend.e2ee_public_key)
 
@@ -95,7 +98,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 }
                 setMessages(data)
             } else {
-                throw new Error("Failed to check friends")
+                if(response.status === 401) {
+                    window.location.reload()
+                }
+                throw new Error("Failed to fetch messages")
             }
         } catch (error) {
             console.log(error)
@@ -108,6 +114,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // Fetch messages every 5 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchMessages(friend.id)
+        }, 5000)
+
+        return () => clearInterval(interval)
+    }, [autoDecrypt])
 
     return (
         <Box ref={bottomRef} >
