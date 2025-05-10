@@ -6,13 +6,35 @@ from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
-    e2ee_public_key = models.JSONField(null=True, blank=True)
+    e2ee_public_key = models.JSONField(unique=True, null=True, blank=True)
+
+    def clean(self):
+        super().clean()
+        if self.e2ee_public_key:
+            x = self.e2ee_public_key.get("x")
+            y = self.e2ee_public_key.get("y")
+            crv = self.e2ee_public_key.get("crv")
+
+            if not (x and y and crv):
+                raise ValidationError("Invalid public key")
+            
+            # Check for duplicate public keys
+            for user in User.objects.exclude(pk=self.pk).iterator():
+                key = user.e2ee_public_key
+                if not key:
+                    continue
+                if key.get("x") == x and key.get("y") == y and key.get("crv") == crv:
+                    raise ValidationError("Public key already in use")
 
     def has_key(self):
         if self.e2ee_public_key is None:
             return False
         else:
             return True
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
             
     
 
