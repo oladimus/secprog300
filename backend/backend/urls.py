@@ -16,13 +16,13 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
 from api.views import (
     CustomAdminLoginView,
     CreateUserView,
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
-    checkAuthenticationView,
+    CheckAuthenticationView,
     logout_view,
     FriendListView,
     FriendRequestView,
@@ -37,13 +37,12 @@ from api.views import (
 admin.site.login = CustomAdminLoginView.as_view()
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("notadmin/", admin.site.urls),
     path("api/user/register/", CreateUserView.as_view(), name="register"),
     path("api/token/", CustomTokenObtainPairView.as_view(), name="get_token"),
     path("api/token/refresh/", CustomTokenRefreshView.as_view(), name="refresh_token"),
-    path("api/auth-check/", checkAuthenticationView.as_view(), name="auth_check"),
+    path("api/auth-check/", CheckAuthenticationView.as_view(), name="auth_check"),
     path("api/user/logout/", logout_view, name="logout"),
-    path("api_auth/", include("rest_framework.urls")),
     path("api/friends/", FriendListView.as_view(), name="friend_list"),
     path(
         "api/friendrequest/send/",

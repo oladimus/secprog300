@@ -95,7 +95,7 @@ def logout_view(request):
             pass
         except InvalidToken:
             pass
-
+    
     response = JsonResponse({"message": "Logged out successfully"})
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
@@ -126,7 +126,7 @@ class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key="ip", rate="100/h", block=True))
+    @method_decorator(ratelimit(key="ip", rate="15/h", block=True))
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
@@ -182,7 +182,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 key="access_token",
                 value=tokens["access"],
                 httponly=True,
-                secure=False,  # true for production
+                secure=True,  # true for production
                 samesite="Lax",  # Strict?
             )
 
@@ -190,7 +190,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 key="refresh_token",
                 value=tokens["refresh"],
                 httponly=True,
-                secure=False,  # true for production
+                secure=True,  # true for production
                 samesite="Lax",
             )
         return response
@@ -214,7 +214,7 @@ class CustomTokenRefreshView(TokenRefreshView):
                 key="access_token",
                 value=access_token,
                 httponly=True,
-                secure=False,  # true for production
+                secure=True,  # true for production
                 samesite="Lax",
             )
             return response
@@ -224,7 +224,7 @@ class CustomTokenRefreshView(TokenRefreshView):
 
 
 @method_decorator(ensure_csrf_cookie, name="get")
-class checkAuthenticationView(APIView):
+class CheckAuthenticationView(APIView):
     # check if authenticated and get user information
     permission_classes = [IsAuthenticated]
 
