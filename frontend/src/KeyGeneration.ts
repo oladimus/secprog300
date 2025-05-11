@@ -3,7 +3,7 @@ import { openDB } from 'idb'
 import { Message } from "./types";
 import { getCsrfToken } from "./utils";
 
-// Derive encryption key from password with PBKDF2
+// Derive encryption key from a password with PBKDF2
 export async function deriveKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey> {
   const enc = new TextEncoder()
   const passwordKey = await crypto.subtle.importKey(

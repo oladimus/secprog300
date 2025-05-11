@@ -81,6 +81,7 @@ class UpdateUserView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+@api_view(["POST"])
 def logout_view(request):
     """Blacklist refresh token after logout"""
     csrf_error = csrf_check(request)

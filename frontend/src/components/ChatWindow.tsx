@@ -32,7 +32,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 }) => {
     const bottomRef = useRef<HTMLDivElement | null>(null);
     const [messages, setMessages] = useState<Message[]>([])
-    // TODO: use useRef instead of useState for messages
     const [newMessage, setNewMessage] = useState("")
     const [decrypted, setDecrypted] = useState(false)
     const [autoDecrypt, setAutoDecrypt] = useState(true)

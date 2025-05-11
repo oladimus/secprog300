@@ -2,7 +2,7 @@ import React from "react"
 
 
 const NotFound: React.FC = () => {
-    return <div>404</div>
+    return <h1>404 - Page Not Found</h1>
 
 }
 

@@ -15,6 +15,14 @@ jobs:
       - name: Fix permissions
         run: sudo chown -R $USER:$USER .
 
+      - name: Update tools
+        run: |
+          sudo apt update
+          sudo apt upgrade -y
+      
+      - name: Start sonarqube
+        run: sudo systemctl start sonarqube
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -49,6 +57,7 @@ jobs:
 
       - name: Run Semgrep
         run: |
+          pipx upgrade semgrep
           semgrep scan --config auto --json > semgrepresults.json
       
 

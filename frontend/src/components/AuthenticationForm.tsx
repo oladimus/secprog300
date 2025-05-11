@@ -61,6 +61,7 @@ const AuthenticationForm: React.FC<AuthenticationFormProps> = ({
         if(username && password)
             if(checkPassword === password || !isRegister){
                 fetchAuthentication()
+                setPassword("")
             } else {
                 setErrorMsg("Passwords do not match!")
             }
