@@ -111,13 +111,13 @@ class CustomAdminLoginView(LoginView):
     def dispatch(self, request, *args, **kwargs):
         ip = request.META.get("REMOTE_ADDR")
         if r.exists(f"ban:{ip}"):
-            return HttpResponse(
-                f"Temporarily banned, too many login attempts", status=429
+            return JsonResponse(
+                {"error": "Temporarily banned, too many login attempts"}, status=429
             )
         if getattr(request, "limited", False):
             handle_violation(request)
-            return HttpResponse(
-                {"Too many login attempts. Try again later."}, status=429
+            return JsonResponse(
+                {"error": "Too many login attempts. Try again later."}, status=429
             )
         return super().dispatch(request, *args, **kwargs)
 
